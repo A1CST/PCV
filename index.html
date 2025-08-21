@@ -189,16 +189,16 @@
         <div id="settings-content">
             <div id="settings-title">Settings</div>
             <div class="setting-item">
-                <label class="setting-label">Enable Gemini Analysis</label>
+                <label class="setting-label">Enable AI Analysis</label>
                 <label class="toggle-switch">
                     <input type="checkbox" id="gemini-enabled-toggle">
                     <span class="slider"></span>
                 </label>
-                <div class="setting-description">Allow Gemini to analyze your codebase</div>
+                <div class="setting-description">Allow the selected AI provider to analyze your codebase</div>
             </div>
             <div class="setting-item">
                 <label class="setting-label">AI Provider</label>
-                <select id="ai-provider-selector" class="theme-select">
+                <select id="ai-provider-selector" class="theme-select" onchange="refreshModelOptions()">
                     <option value="none">None (disabled)</option>
                     <option value="gemini">Gemini CLI</option>
                     <option value="ollama">Ollama (local)</option>
@@ -207,7 +207,7 @@
             </div>
             <div class="setting-item">
                 <label class="setting-label">AI Model</label>
-                <input type="text" id="ai-model-input" class="workspace-input" placeholder="e.g., qwen2.5-coder or llama3.1:8b">
+                <select id="ai-model-selector" class="theme-select"></select>
                 <div class="setting-description">Model name for the selected provider</div>
             </div>
             <div class="setting-item">
@@ -215,18 +215,18 @@
                 <input type="text" id="ai-base-url-input" class="workspace-input" placeholder="http://localhost:11434">
                 <div class="setting-description">Only used for Ollama; ignore for Gemini</div>
             </div>
-            <div class="setting-item">
+            <div class="setting-item" id="gemini-cli-section">
                 <label class="setting-label">Gemini CLI Path (optional)</label>
                 <input type="text" id="gemini-cli-path-input" class="workspace-input" placeholder="gemini">
                 <div class="setting-description">Leave blank to use system 'gemini'</div>
             </div>
-            <div class="setting-item">
-                <label class="setting-label">Initialize Gemini on Startup</label>
+            <div class="setting-item" id="startup-section">
+                <label class="setting-label">Initialize on Startup</label>
                 <label class="toggle-switch">
                     <input type="checkbox" id="gemini-startup-toggle">
                     <span class="slider"></span>
                 </label>
-                <div class="setting-description">Automatically start Gemini analysis when the app loads</div>
+                <div class="setting-description">Automatically start the selected AI provider when the app loads (Gemini only)</div>
             </div>
             <div class="setting-item">
                 <label class="setting-label">Color Scheme</label>
@@ -250,23 +250,27 @@
                         <label class="color-label">Secondary Color:</label>
                         <input type="color" id="secondary-color-picker" value="#121212">
                     </div>
+                    <div class="color-picker-item">
+                        <label class="color-label">Text Color:</label>
+                        <input type="color" id="text-color-picker" value="#e5e7eb">
+                    </div>
                 </div>
                 <div class="setting-description">Choose your own primary and secondary colors</div>
             </div>
             <div class="setting-item">
-                <label class="setting-label">Auto-save after Gemini edit</label>
+                <label class="setting-label">Auto-save after AI edit</label>
                 <label class="toggle-switch">
                     <input type="checkbox" id="auto-save-toggle">
                     <span class="slider"></span>
                 </label>
-                <div class="setting-description">Automatically save code changes suggested by Gemini to disk</div>
+                <div class="setting-description">Automatically save code changes suggested by AI to disk</div>
             </div>
-            <div class="setting-item">
+            <div class="setting-item" id="initialize-section">
                 <button id="initialize-gemini-btn" class="navbar-button" style="width: 100%;" disabled>
-                    <span id="initialize-btn-text">Initialize Gemini</span>
+                    <span id="initialize-btn-text">Initialize AI</span>
                     <span id="initialize-btn-spinner" class="loading-spinner" style="display: none;"></span>
                 </button>
-                <div class="setting-description">Manually start Gemini analysis (requires Gemini to be enabled)</div>
+                <div class="setting-description">Manually start analysis for the selected AI (Gemini requires initialization)</div>
             </div>
             <div style="display: flex; gap: 10px; margin-top: 20px;">
                 <button id="close-settings-button" class="navbar-button" style="flex: 1;">Close</button>
@@ -392,6 +396,7 @@
             theme: 'default',
             custom_primary: '#00ff00',
             custom_secondary: '#121212',
+            custom_text: '#e5e7eb',
             auto_save_gemini: false
         };
 
@@ -1218,6 +1223,15 @@
                 applyCustomColors();
             }
         });
+        const textPickerEl = document.getElementById('text-color-picker');
+        if (textPickerEl) {
+            textPickerEl.addEventListener('change', function() {
+                settingsData.custom_text = this.value;
+                if (settingsData.theme === 'custom') {
+                    applyCustomColors();
+                }
+            });
+        }
         
         // Auto-save toggle event listener
         document.getElementById('auto-save-toggle').addEventListener('change', function() {
@@ -1329,10 +1343,16 @@
                     
                     // Load custom colors
                     if (data.custom_primary) {
-                        document.getElementById('primary-color-picker').value = data.custom_primary;
+                        const p = document.getElementById('primary-color-picker'); if (p) p.value = data.custom_primary;
+                        settingsData.custom_primary = data.custom_primary;
                     }
                     if (data.custom_secondary) {
-                        document.getElementById('secondary-color-picker').value = data.custom_secondary;
+                        const s = document.getElementById('secondary-color-picker'); if (s) s.value = data.custom_secondary;
+                        settingsData.custom_secondary = data.custom_secondary;
+                    }
+                    if (data.custom_text) {
+                        const t = document.getElementById('text-color-picker'); if (t) t.value = data.custom_text;
+                        settingsData.custom_text = data.custom_text;
                     }
                     
                     // Load auto-save setting
@@ -1340,42 +1360,76 @@
                     settingsData.auto_save_gemini = data.auto_save_gemini || false;
 
                     // Load AI provider settings
-                    document.getElementById('ai-provider-selector').value = data.ai_provider || 'none';
-                    document.getElementById('ai-model-input').value = data.ai_model || '';
+                    const providerSelect = document.getElementById('ai-provider-selector');
+                    providerSelect.value = data.ai_provider || 'none';
+                    const modelSelect = document.getElementById('ai-model-selector');
+                    modelSelect.innerHTML = '';
+                    const addOpt = (val) => { const o = document.createElement('option'); o.value = val; o.textContent = val; modelSelect.appendChild(o); };
+                    if (Array.isArray(data.ollama_models) && data.ollama_models.length > 0) {
+                        data.ollama_models.forEach(addOpt);
+                    }
+                    if (data.ai_model) {
+                        // Ensure current model appears
+                        if (![...modelSelect.options].some(o => o.value === data.ai_model)) addOpt(data.ai_model);
+                        modelSelect.value = data.ai_model;
+                    }
                     document.getElementById('ai-base-url-input').value = data.ai_base_url || '';
                     document.getElementById('gemini-cli-path-input').value = data.gemini_cli_path || '';
                     
-                    // Show custom section if needed
+                    // Show custom section if needed and apply colors immediately
                     if (theme === 'custom') {
                         document.getElementById('custom-colors-section').style.display = 'block';
+                        applyCustomColors();
                     }
                     
                     updateInitializeButton();
+                    refreshModelOptions();
                 })
                 .catch(error => {
                     console.error('Error loading settings:', error);
                 });
         }
 
+        function refreshModelOptions() {
+            const provider = document.getElementById('ai-provider-selector').value;
+            const baseUrl = document.getElementById('ai-base-url-input').value.trim();
+            fetch(`/ai/models?provider=${encodeURIComponent(provider)}&base_url=${encodeURIComponent(baseUrl)}`)
+                .then(r => r.json())
+                .then(d => {
+                    const modelSelect = document.getElementById('ai-model-selector');
+                    if (!modelSelect) return;
+                    modelSelect.innerHTML = '';
+                    (d.models || []).forEach(m => {
+                        const o = document.createElement('option'); o.value = m; o.textContent = m; modelSelect.appendChild(o);
+                    });
+                    if (settingsData.ai_model && ![...modelSelect.options].some(o => o.value === settingsData.ai_model)) {
+                        const o = document.createElement('option'); o.value = settingsData.ai_model; o.textContent = settingsData.ai_model; modelSelect.appendChild(o);
+                    }
+                    if (settingsData.ai_model) modelSelect.value = settingsData.ai_model;
+                })
+                .catch(e => console.warn('Model list fetch failed', e));
+        }
+
         function updateInitializeButton() {
             const btn = document.getElementById('initialize-gemini-btn');
             const text = document.getElementById('initialize-btn-text');
             const spinner = document.getElementById('initialize-btn-spinner');
+            const provider = document.getElementById('ai-provider-selector').value;
             
             if (settingsData.gemini_enabled) {
                 btn.disabled = false;
-                if (settingsData.gemini_initialized) {
+                if (provider === 'gemini' && settingsData.gemini_initialized) {
                     text.textContent = 'Gemini Initialized';
                     btn.style.backgroundColor = '#00cc00'; // Green when initialized
                     btn.style.color = 'white';
                 } else {
-                    text.textContent = 'Initialize Gemini';
+                    text.textContent = provider === 'gemini' ? 'Initialize Gemini' : 'Initialize AI';
                     btn.style.backgroundColor = '#0066cc'; // Blue when enabled but not initialized
                     btn.style.color = 'white';
                 }
             } else {
                 btn.disabled = true;
-                text.textContent = 'Initialize Gemini';
+                text.textContent = 'Initialize AI';
                 btn.style.backgroundColor = '#cc0000'; // Red when disabled
                 btn.style.color = 'white';
             }
@@ -1405,7 +1459,7 @@
                     gemini_enabled: geminiEnabled,
                     gemini_initialize_on_startup: geminiStartup,
                     ai_provider: document.getElementById('ai-provider-selector').value,
-                    ai_model: document.getElementById('ai-model-input').value.trim(),
+                    ai_model: document.getElementById('ai-model-selector').value.trim(),
                     ai_base_url: document.getElementById('ai-base-url-input').value.trim(),
                     gemini_cli_path: document.getElementById('gemini-cli-path-input').value.trim(),
                     theme: settingsData.theme,
@@ -1496,8 +1550,13 @@
         // Theme management functions
         function applyTheme(themeName) {
             document.documentElement.setAttribute('data-theme', themeName);
-            
-            if (themeName === 'custom') {
+            // For non-custom themes, set a safe contrasting text color dynamically
+            if (themeName !== 'custom') {
+                const computedBg = getComputedStyle(document.documentElement).getPropertyValue('--secondary-color').trim() || '#0D1117';
+                const text = pickContrastingColor(computedBg);
+                document.documentElement.style.setProperty('--text-color', text);
+                document.documentElement.style.setProperty('--light-gray', text);
+            } else {
                 applyCustomColors();
             }
         }
@@ -1505,10 +1564,23 @@
         function applyCustomColors() {
             const primary = settingsData.custom_primary;
             const secondary = settingsData.custom_secondary;
+            const textColor = settingsData.custom_text || '#e5e7eb';
             
             // Apply only primary and secondary colors
             document.documentElement.style.setProperty('--custom-primary', primary);
             document.documentElement.style.setProperty('--custom-secondary', secondary);
+            document.documentElement.style.setProperty('--custom-text', textColor);
+        }
+
+        // Utility: compute high-contrast text color (black/white) from background
+        function pickContrastingColor(hex) {
+            const c = hex.replace('#','');
+            const r = parseInt(c.substring(0,2), 16);
+            const g = parseInt(c.substring(2,4), 16);
+            const b = parseInt(c.substring(4,6), 16);
+            // YIQ formula
+            const yiq = (r*299 + g*587 + b*114) / 1000;
+            return yiq >= 128 ? '#111827' : '#e5e7eb';
         }
         
         // Removed complex color manipulation - using only primary and secondary colors

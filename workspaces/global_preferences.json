@@ -1,5 +1,5 @@
 {
-  "theme": "default",
+  "theme": "light-blue",
   "custom_primary": "#00ff00",
   "custom_secondary": "#121212",
   "auto_save": true,
@@ -10,7 +10,7 @@
   "show_file_extensions": true,
   "auto_refresh": false,
   "created_at": "2025-08-21 10:51:09",
-  "last_modified": "2025-08-21 12:20:15",
+  "last_modified": "2025-08-21 12:22:22",
   "ai_provider": "none",
   "ai_model": "qwen2.5-coder",
   "ai_base_url": "http://localhost:11434",

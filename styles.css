@@ -42,8 +42,8 @@
 [data-theme="custom"] {
     --primary-color: var(--custom-primary, #00ff00);
     --secondary-color: var(--custom-secondary, #121212);
-    --text-color: #e5e7eb;
-    --light-gray: #e5e7eb;
+    --text-color: var(--custom-text, #e5e7eb);
+    --light-gray: var(--custom-text, #e5e7eb);
 }
 
 /* Apply theme colors to all themes */
@@ -73,6 +73,21 @@ body {
     transition: background-color 0.3s ease;
     /* Scale base font size responsively for readability */
     font-size: clamp(15px, 0.9vw + 8px, 20px);
+}
+
+/* Ensure form controls are legible across themes */
+input, select, textarea, button {
+    color: var(--text-color);
+}
+
+input, select, textarea {
+    background-color: var(--medium-gray);
+    border: 1px solid var(--border-color);
+}
+
+input::placeholder, textarea::placeholder {
+    color: var(--text-color);
+    opacity: 0.8;
 }
 
 .navbar {

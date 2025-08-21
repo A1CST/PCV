@@ -174,6 +174,7 @@ def stop_file_monitoring():
 CONFIG_FILE = "visualizer_config.json"
 WORKSPACES_DIR = "workspaces"
 GLOBAL_PREFERENCES_FILE = "global_preferences.json"
+LAYOUTS_FILENAME = "layouts.json"
 
 def load_config():
     global GEMINI_ENABLED, GEMINI_INITIALIZE_ON_STARTUP, AI_PROVIDER, AI_MODEL, AI_BASE_URL, AI_TIMEOUT_SEC, GEMINI_CLI_PATH
@@ -1060,7 +1061,8 @@ def get_settings():
     theme_settings = {
         'theme': 'default',
         'custom_primary': '#00ff00',
-        'custom_secondary': '#121212'
+        'custom_secondary': '#121212',
+        'custom_text': '#e5e7eb'
     }
     
     try:
@@ -1072,6 +1074,7 @@ def get_settings():
                     'theme': global_prefs.get('theme', 'default'),
                     'custom_primary': global_prefs.get('custom_primary', '#00ff00'),
                     'custom_secondary': global_prefs.get('custom_secondary', '#121212'),
+                    'custom_text': global_prefs.get('custom_text', '#e5e7eb'),
                     'auto_save_gemini': global_prefs.get('auto_save_gemini', False)
                 }
                 # Also load gemini settings from global prefs
@@ -1088,16 +1091,26 @@ def get_settings():
     except Exception as e:
         print(f"Error loading global preferences: {e}")
     
+    # Try to enumerate local Ollama models if provider is ollama
+    ollama_models = []
+    try:
+        if AI_PROVIDER == 'ollama':
+            ollama_models = _list_ollama_models(AI_BASE_URL, AI_TIMEOUT_SEC)
+    except Exception as e:
+        print(f"Failed to list Ollama models: {e}")
+
     return jsonify({
         'gemini_enabled': GEMINI_ENABLED,
         'gemini_initialize_on_startup': GEMINI_INITIALIZE_ON_STARTUP,
         'gemini_initialized': GEMINI_INITIALIZED,
         'ai_provider': AI_PROVIDER,
         'ai_model': AI_MODEL,
+        'ollama_models': ollama_models,
         'ai_base_url': AI_BASE_URL,
         'ai_timeout_sec': AI_TIMEOUT_SEC,
         'debug_log_ai': DEBUG_LOG_AI_RESPONSES,
-        **theme_settings
+        **theme_settings,
+        'custom_text': theme_settings.get('custom_text', '#e5e7eb') if isinstance(theme_settings, dict) else '#e5e7eb'
     })
 
 @app.route('/settings', methods=['POST'])
@@ -1138,6 +1151,7 @@ def update_settings():
             'theme': data.get('theme', 'default'),
             'custom_primary': data.get('custom_primary', '#00ff00'),
             'custom_secondary': data.get('custom_secondary', '#121212'),
+            'custom_text': data.get('custom_text', '#e5e7eb'),
             'auto_save_gemini': data.get('auto_save_gemini', False),
             'debug_log_ai': data.get('debug_log_ai', False),
             'last_modified': time.strftime("%Y-%m-%d %H:%M:%S")
@@ -1171,7 +1185,75 @@ def update_settings():
         print(f"Error saving settings: {e}")
         return jsonify({'success': False, 'error': str(e)})
     
-    return jsonify({'success': True})
+    # Return updated settings including any discovered models
+    extra = {}
+    try:
+        if AI_PROVIDER == 'ollama':
+            extra['ollama_models'] = _list_ollama_models(AI_BASE_URL, AI_TIMEOUT_SEC)
+    except Exception as e:
+        print(f"Failed to list Ollama models: {e}")
+
+    return jsonify({'success': True, **extra})
+
+
+def _list_ollama_models(base_url: str, timeout_sec: int):
+    try:
+        import requests
+        resp = requests.get(f"{base_url}/api/tags", timeout=timeout_sec)
+        if resp.ok:
+            data = resp.json()
+            if isinstance(data, dict) and 'models' in data:
+                return [m.get('name') for m in data.get('models', []) if m.get('name')]
+    except Exception as e:
+        print(f"_list_ollama_models error: {e}")
+    return []
+
+
+@app.route('/ai/models')
+def list_ai_models():
+    """Provider-agnostic model listing endpoint used by the settings UI."""
+    provider = request.args.get('provider', AI_PROVIDER)
+    base_url = request.args.get('base_url', AI_BASE_URL)
+    models = []
+    try:
+        if provider == 'ollama':
+            models = _list_ollama_models(base_url, AI_TIMEOUT_SEC)
+        elif provider == 'gemini':
+            # Gemini CLI doesn't easily expose models without auth; defer to manual entry later
+            models = []
+    except Exception as e:
+        print(f"/ai/models error: {e}")
+    return jsonify({'provider': provider, 'models': models})
+
+@app.route('/save-layout', methods=['POST'])
+def save_layout():
+    """Persist front-end node positions per file id."""
+    try:
+        data = request.json or {}
+        file_id = data.get('file_id')  # e.g., relative file name id used in nodes
+        positions = data.get('positions')  # [{id, x, y}]
+        if not file_id or not isinstance(positions, list):
+            return jsonify({'success': False, 'error': 'Invalid payload'}), 400
+
+        layouts = _read_layouts()
+        layouts[file_id] = positions
+        if not _write_layouts(layouts):
+            return jsonify({'success': False, 'error': 'Failed to write layouts'}), 500
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/load-layout', methods=['GET'])
+def load_layout():
+    """Return saved positions for a given file id if any."""
+    try:
+        file_id = request.args.get('file_id')
+        if not file_id:
+            return jsonify({'success': False, 'error': 'file_id required'}), 400
+        layouts = _read_layouts()
+        return jsonify({'success': True, 'positions': layouts.get(file_id, [])})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/initialize-gemini', methods=['POST'])
 def initialize_gemini():
@@ -1734,6 +1816,50 @@ def get_current_workspace_path():
         print(f"Error getting current workspace path: {e}")
     
     return None
+
+def get_current_workspace_meta_folder():
+    """Return the workspace meta folder path (workspaces/workspace_X)."""
+    try:
+        current_ws = get_current_workspace()
+        # Open config to get the workspace folder
+        if os.path.exists(CONFIG_FILE):
+            with open(CONFIG_FILE, 'r') as f:
+                config = json.load(f)
+                ws = config.get(current_ws)
+                if isinstance(ws, dict):
+                    folder = ws.get('workspace_folder')
+                    if folder and os.path.isdir(folder):
+                        return folder
+        # Fallback: construct default path
+        default_folder = os.path.join(WORKSPACES_DIR, current_ws)
+        return default_folder
+    except Exception as e:
+        print(f"Error getting workspace meta folder: {e}")
+        return os.path.join(WORKSPACES_DIR, get_current_workspace())
+
+def _read_layouts():
+    try:
+        meta_folder = get_current_workspace_meta_folder()
+        os.makedirs(meta_folder, exist_ok=True)
+        layouts_path = os.path.join(meta_folder, LAYOUTS_FILENAME)
+        if os.path.exists(layouts_path):
+            with open(layouts_path, 'r', encoding='utf-8') as f:
+                return json.load(f)
+    except Exception as e:
+        print(f"Error reading layouts: {e}")
+    return {}
+
+def _write_layouts(layouts):
+    try:
+        meta_folder = get_current_workspace_meta_folder()
+        os.makedirs(meta_folder, exist_ok=True)
+        layouts_path = os.path.join(meta_folder, LAYOUTS_FILENAME)
+        with open(layouts_path, 'w', encoding='utf-8') as f:
+            json.dump(layouts, f, indent=2)
+        return True
+    except Exception as e:
+        print(f"Error writing layouts: {e}")
+        return False
 
 def load_global_preferences():
     """Load global preferences from file"""
