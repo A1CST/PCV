@@ -660,7 +660,7 @@ input[type="color"]::-webkit-color-swatch {
 
 .panel-title {
     color: var(--primary-green);
-    font-size: clamp(14px, 1.6vh + 6px, 18px);
+    font-size: clamp(18px, 2vh + 8px, 24px); /* ~25% larger */
     font-weight: bold;
     margin: 0;
     padding: 15px 15px 8px 15px;
