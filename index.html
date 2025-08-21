@@ -849,7 +849,7 @@
             });
 
             // Zoom-to-fit utility
-            function zoomToFit(padding = 24) {
+            function zoomToFit(padding = 24, instant = false) {
                 try {
                     const bbox = g.node().getBBox();
                     if (!isFinite(bbox.width) || !isFinite(bbox.height) || bbox.width === 0 || bbox.height === 0) return;
@@ -860,14 +860,27 @@
                     const tx = (width - bbox.width * scale) / 2 - bbox.x * scale;
                     const ty = (height - bbox.height * scale) / 2 - bbox.y * scale;
                     const t = d3.zoomIdentity.translate(tx, ty).scale(scale);
-                    svg.transition().duration(400).call(d3.zoom().transform, t);
+                    if (instant) {
+                        svg.call(d3.zoom().transform, t);
+                    } else {
+                        svg.transition().duration(400).call(d3.zoom().transform, t);
+                    }
                 } catch (_) { /* ignore */ }
             }
 
-            // Fit after simulation stabilizes
+            // Fit after simulation stabilizes (without animation on first load)
+            let initialFitDone = false;
             simulation.on("end", () => {
-                zoomToFit();
+                if (!initialFitDone) {
+                    zoomToFit(24, true);
+                    initialFitDone = true;
+                } else {
+                    zoomToFit();
+                }
             });
+
+            // Fallback: ensure a fit on next frame in case 'end' fires before layout settles
+            requestAnimationFrame(() => zoomToFit(24, true));
 
             // Refit on container resize
             const ro = new ResizeObserver(() => {
