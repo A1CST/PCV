@@ -230,6 +230,18 @@ body {
     font-size: 30px; /* +50% */
 }
 
+/* Enlarge settings inputs without changing container sizes */
+#settings-content input[type="text"],
+#settings-content input[type="url"],
+#settings-content input[type="password"],
+#settings-content input[type="number"],
+#settings-content input[type="search"],
+#settings-content textarea {
+    font-size: 30px;
+    padding: 12px 16px;
+    line-height: 1.4;
+}
+
 #settings-title {
     color: var(--primary-green);
     font-size: 36px;
