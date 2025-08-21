@@ -618,19 +618,17 @@ input[type="color"]::-webkit-color-swatch {
 .main-container {
     display: flex;
     flex-direction: column;
-    width: min(96vw, 1600px);
-    height: calc(100vh - 120px); /* Account for navbar + sub-navbar */
+    width: 100%;
     transition: all 0.3s ease;
     margin: 0 auto;
     justify-content: flex-start;
     align-items: center;
-    padding-top: 10px;
     overflow: hidden;
 }
 
 .carousel-section {
     width: 100%;
-    height: 65%;
+    height: 30vh; /* 60% of top half (50vh) */
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -639,7 +637,7 @@ input[type="color"]::-webkit-color-swatch {
 
 .bottom-panels {
     width: 100%;
-    height: 30%;
+    height: 40vh; /* 80% of lower half */
     display: flex;
     gap: 15px;
     margin-top: 10px;
@@ -845,12 +843,13 @@ input[type="color"]::-webkit-color-swatch {
 .sub-navbar {
     background-color: var(--medium-gray);
     color: var(--light-gray);
-    padding: 10px 20px;
+    padding: 12px 20px;
     display: flex;
     align-items: center;
     gap: 15px;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
     border-bottom: 1px solid var(--border-color);
+    min-height: 20vh; /* 40% of top half */
 }
 
 .sub-navbar-label {
@@ -864,7 +863,7 @@ input[type="color"]::-webkit-color-swatch {
     flex-wrap: wrap;
     gap: 8px;
     overflow-x: auto;
-    max-height: 7.5rem;
+    max-height: calc(20vh - 40px);
 }
 
 .file-nav-button {
@@ -874,7 +873,7 @@ input[type="color"]::-webkit-color-swatch {
     padding: 6px 12px;
     border-radius: 4px;
     cursor: pointer;
-    font-size: 12px;
+    font-size: 18px; /* ~14pt for legibility */
     transition: all 0.2s ease;
     margin-right: 8px;
 }
@@ -912,8 +911,8 @@ input[type="color"]::-webkit-color-swatch {
 }
 
 .swiper-container-main .swiper-slide {
-    width: clamp(540px, 46vw, 980px);
-    height: 82%;
+    width: calc(100% - 64px); /* full width with sensible margin */
+    height: 100%;
     margin: 0 auto;
 }
 
@@ -1132,6 +1131,9 @@ svg {
     padding: 10px 20px;
     box-shadow: 0 -5px 15px rgba(0, 0, 0, 0.5);
     z-index: 1001;
+    height: 10vh; /* 20% of lower half */
+    display: flex;
+    align-items: center;
 }
 
 /* Fixed Gemini bars for script windows */
