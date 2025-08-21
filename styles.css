@@ -698,9 +698,9 @@ input[type="color"]::-webkit-color-swatch {
 
 .issue-severity {
     display: inline-block;
-    padding: 2px 6px;
+    padding: 4px 10px;
     border-radius: 3px;
-    font-size: 14px;
+    font-size: 24px; /* doubled for legibility */
     font-weight: bold;
     margin-right: 8px;
 }
