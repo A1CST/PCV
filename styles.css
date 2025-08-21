@@ -8,34 +8,42 @@
     --primary-green: var(--primary-color);
     --dark-gray: var(--secondary-color);
     --medium-gray: var(--secondary-color);
-    --light-gray: var(--primary-color);
+    --light-gray: #e5e7eb;
     --modal-bg: var(--secondary-color);
     --border-color: var(--primary-color);
-    --text-color: var(--primary-color);
+    --text-color: #e5e7eb;
 }
 
 /* Light Blue Theme */
 [data-theme="light-blue"] {
     --primary-color: #4A90E2;
     --secondary-color: #f8f9fa;
+    --text-color: #111827;
+    --light-gray: #111827;
 }
 
 /* Dark Blue Theme */
 [data-theme="dark-blue"] {
     --primary-color: #64B5F6;
     --secondary-color: #0D1117;
+    --text-color: #e5e7eb;
+    --light-gray: #e5e7eb;
 }
 
 /* High Contrast Theme */
 [data-theme="high-contrast"] {
     --primary-color: #FFFF00;
     --secondary-color: #000000;
+    --text-color: #ffffff;
+    --light-gray: #ffffff;
 }
 
 /* Custom Theme */
 [data-theme="custom"] {
     --primary-color: var(--custom-primary, #00ff00);
     --secondary-color: var(--custom-secondary, #121212);
+    --text-color: #e5e7eb;
+    --light-gray: #e5e7eb;
 }
 
 /* Apply theme colors to all themes */
@@ -43,10 +51,10 @@
     --primary-green: var(--primary-color);
     --dark-gray: var(--secondary-color);
     --medium-gray: var(--secondary-color);
-    --light-gray: var(--primary-color);
+    --light-gray: var(--text-color);
     --modal-bg: var(--secondary-color);
     --border-color: var(--primary-color);
-    --text-color: var(--primary-color);
+    --text-color: var(--text-color);
 }
 
 * {
@@ -55,7 +63,7 @@
 
 body {
     background-color: var(--dark-gray);
-    color: var(--light-gray);
+    color: var(--text-color);
     font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
     margin: 0;
     display: flex;
@@ -64,7 +72,7 @@ body {
     overflow: hidden;
     transition: background-color 0.3s ease;
     /* Scale base font size responsively for readability */
-    font-size: clamp(14px, 1.05vw + 6px, 18px);
+    font-size: clamp(15px, 0.9vw + 8px, 20px);
 }
 
 .navbar {
@@ -610,7 +618,7 @@ input[type="color"]::-webkit-color-swatch {
 .main-container {
     display: flex;
     flex-direction: column;
-    width: 80%;
+    width: min(96vw, 1600px);
     height: calc(100vh - 120px); /* Account for navbar + sub-navbar */
     transition: all 0.3s ease;
     margin: 0 auto;
@@ -822,11 +830,11 @@ input[type="color"]::-webkit-color-swatch {
 }
 
 .swiper-button-next {
-    right: calc(50% - 200px) !important; /* Position at edge of center card */
+    right: calc(50% - clamp(280px, 23vw, 520px)) !important; /* dynamic edge of center card */
 }
 
 .swiper-button-prev {
-    left: calc(50% - 200px) !important; /* Position at edge of center card */
+    left: calc(50% - clamp(280px, 23vw, 520px)) !important; /* dynamic edge of center card */
 }
 
 .swiper-button-next:hover,
@@ -849,6 +857,14 @@ input[type="color"]::-webkit-color-swatch {
     color: var(--primary-green);
     font-weight: bold;
     margin-right: 10px;
+}
+
+#file-navigation {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    overflow-x: auto;
+    max-height: 7.5rem;
 }
 
 .file-nav-button {
@@ -896,8 +912,8 @@ input[type="color"]::-webkit-color-swatch {
 }
 
 .swiper-container-main .swiper-slide {
-    width: 31%;
-    height: 75%;
+    width: clamp(540px, 46vw, 980px);
+    height: 82%;
     margin: 0 auto;
 }
 
@@ -932,8 +948,8 @@ input[type="color"]::-webkit-color-swatch {
 
 /* Dynamic sizing for two scripts */
 .swiper-container-main.two-scripts .swiper-slide {
-    width: 36%; /* Reduced by 20% from 45% */
-    height: 80%; /* Increased height for two scripts */
+    width: clamp(520px, 40vw, 900px);
+    height: 84%;
 }
 
 /* D3.js Graph Styles */
@@ -963,8 +979,8 @@ svg {
 }
 
 .node text {
-    fill: var(--light-gray);
-    font-size: 12px;
+    fill: var(--text-color);
+    font-size: clamp(11px, 0.75vw + 8px, 16px);
     text-anchor: middle;
     pointer-events: none;
     transition: fill 0.2s ease-out;
