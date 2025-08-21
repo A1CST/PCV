@@ -143,7 +143,7 @@
                 <pre><code id="code-snippet" contenteditable="false"></code></pre>
             </div>
             <div id="modal-gemini-form">
-                <input type="text" id="modal-gemini-prompt" placeholder="Ask Gemini about this code...">
+                <input type="text" id="modal-gemini-prompt" placeholder="Ask your AI about this code...">
                 <button id="modal-gemini-send">Send</button>
             </div>
         </div>
@@ -171,7 +171,7 @@
             <div id="right-modal-returns"></div>
             <div id="right-modal-code-container" contenteditable="false"></div>
             <div id="right-modal-gemini-form">
-                <input type="text" id="right-modal-gemini-prompt" placeholder="Ask Gemini about this script...">
+                <input type="text" id="right-modal-gemini-prompt" placeholder="Ask your AI about this script...">
                 <button id="right-modal-gemini-send">Send</button>
             </div>
         </div>
@@ -364,7 +364,7 @@
     </div>
 
     <div id="gemini-request-bar">
-        <input type="text" id="main-gemini-prompt" placeholder="Ask Gemini about the current script...">
+        <input type="text" id="main-gemini-prompt" placeholder="Ask your AI about the current script or project">
         <button id="main-gemini-send">Send</button>
     </div>
 
@@ -522,20 +522,20 @@
 
             const width = container.clientWidth;
             const height = container.clientHeight;
-            const svg = d3.select(container).append("svg")
-                .attr("width", width)
-                .attr("height", height)
-                .attr("viewBox", `0 0 ${width} ${height}`)
-                .call(
-                    d3.zoom()
+            const zoomBehavior = d3.zoom()
                       .scaleExtent([0.6, 4])
                       .on("zoom", function (event) {
                           g.attr("transform", event.transform);
                           const scale = event.transform.k || 1;
                           // Reduce label clutter when zoomed out
                           g.selectAll('text').attr('display', scale < 0.7 ? 'none' : null);
-                      })
-                );
+                      });
+
+            const svg = d3.select(container).append("svg")
+                .attr("width", width)
+                .attr("height", height)
+                .attr("viewBox", `0 0 ${width} ${height}`)
+                .call(zoomBehavior);
 
             const g = svg.append("g");
 
@@ -642,7 +642,6 @@
                 .data(nodes)
                 .enter().append("g")
                 .attr("class", "node")
-                .call(drag(simulation))
                 .on('click', (event, d) => {
                     if (d.type === 'file') {
                         const rightModal = document.getElementById('right-modal');
@@ -690,6 +689,146 @@
                         };
                     }
                 });
+
+            // --- Manual layout editing controls ---
+            let isLayoutEditing = false;
+
+            const toolbar = document.createElement('div');
+            toolbar.style.position = 'absolute';
+            toolbar.style.right = '16px';
+            toolbar.style.top = '12px';
+            toolbar.style.display = 'flex';
+            toolbar.style.gap = '8px';
+            toolbar.style.zIndex = '6';
+            container.parentElement.style.position = 'relative';
+            container.parentElement.appendChild(toolbar);
+
+            const editBtn = document.createElement('button');
+            editBtn.textContent = 'Edit Layout';
+            editBtn.className = 'navbar-button';
+            toolbar.appendChild(editBtn);
+
+            const saveBtn = document.createElement('button');
+            saveBtn.textContent = 'Save Layout';
+            saveBtn.className = 'navbar-button';
+            toolbar.appendChild(saveBtn);
+
+            function applyDragBehavior() {
+                const behavior = d3.drag()
+                    .on('start', (event, d) => {
+                        // Lock file node in place
+                        if (d.type === 'file') { return; }
+                        d.fx = d.x; d.fy = d.y;
+                        simulation.alphaTarget(0.1).restart();
+                    })
+                    .on('drag', (event, d) => {
+                        if (d.type === 'file') { return; }
+                        d.fx = event.x; d.fy = event.y;
+                        simulation.alphaTarget(0.1).restart();
+                    })
+                    .on('end', (event, d) => {
+                        if (d.type === 'file') { return; }
+                        if (!isLayoutEditing) {
+                            if (!event.active) simulation.alphaTarget(0);
+                            d.fx = null; d.fy = null;
+                        }
+                    });
+                node.call(behavior);
+            }
+            applyDragBehavior();
+
+            editBtn.addEventListener('click', () => {
+                isLayoutEditing = !isLayoutEditing;
+                editBtn.textContent = isLayoutEditing ? 'Editing…' : 'Edit Layout';
+                // Disable swiper gestures while editing
+                try {
+                    if (window.mainSwiper) {
+                        window.mainSwiper.allowTouchMove = !isLayoutEditing;
+                        window.mainSwiper.params.grabCursor = !isLayoutEditing;
+                        window.mainSwiper.params.simulateTouch = !isLayoutEditing;
+                        // mark this slide as no-swiping while editing
+                        const slideEl = container.parentElement;
+                        if (isLayoutEditing) {
+                            slideEl.classList.add('swiper-no-swiping');
+                        } else {
+                            slideEl.classList.remove('swiper-no-swiping');
+                        }
+                        window.mainSwiper.update && window.mainSwiper.update();
+                    }
+                } catch (_) {}
+                // Disable zoom/pan while editing to make node drags precise
+                if (isLayoutEditing) {
+                    svg.on('.zoom', null);
+                    // block events reaching swiper only while editing
+                    svg.on('mousedown.block', (event) => { event.stopPropagation(); })
+                       .on('pointerdown.block', (event) => { event.stopPropagation(); })
+                       .on('touchstart.block', (event) => { event.stopPropagation(); });
+                    node.on('mousedown.block', (event) => { event.stopPropagation(); })
+                        .on('touchstart.block', (event) => { event.stopPropagation(); });
+                    nodes.forEach(n => { if (n.type !== 'file') { n.fx = n.x; n.fy = n.y; } });
+                    simulation.alphaTarget(0.1).restart();
+                    svg.style('cursor', 'move');
+                } else {
+                    svg.call(zoomBehavior);
+                    // remove event blocks, re-enable swiper gestures fully
+                    svg.on('mousedown.block', null).on('pointerdown.block', null).on('touchstart.block', null);
+                    node.on('mousedown.block', null).on('touchstart.block', null);
+                    nodes.forEach(n => { if (n.type !== 'file') { n.fx = null; n.fy = null; } });
+                    simulation.alphaTarget(0).restart();
+                    svg.style('cursor', null);
+                }
+                applyDragBehavior();
+            });
+
+            saveBtn.addEventListener('click', () => {
+                const positions = nodes.map(n => ({ id: n.id, x: n.x, y: n.y }));
+                fetch('/save-layout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ file_id: file.id, positions })
+                }).then(r => r.json()).then(res => {
+                    addConsoleMessage(res.success ? 'Layout saved' : ('Layout save failed: ' + (res.error||'')), res.success ? 'SUCCESS' : 'ERROR');
+                    if (res.success) {
+                        // keep nodes pinned to saved positions and exit edit mode
+                        nodes.forEach(n => { if (n.type !== 'file') { n.fx = n.x; n.fy = n.y; } });
+                        isLayoutEditing = false;
+                        editBtn.textContent = 'Edit Layout';
+                        try {
+                            if (window.mainSwiper) {
+                                window.mainSwiper.allowTouchMove = true;
+                                window.mainSwiper.params.grabCursor = true;
+                                window.mainSwiper.params.simulateTouch = true;
+                                const slideEl = container.parentElement;
+                                slideEl.classList.remove('swiper-no-swiping');
+                                window.mainSwiper.update && window.mainSwiper.update();
+                            }
+                        } catch (_) {}
+                        svg.call(zoomBehavior);
+                        svg.on('mousedown.block', null).on('pointerdown.block', null).on('touchstart.block', null);
+                        node.on('mousedown.block', null).on('touchstart.block', null);
+                        svg.style('cursor', null);
+                        simulation.alphaTarget(0).restart();
+                    }
+                }).catch(err => addConsoleMessage('Layout save error: ' + err.message, 'ERROR'));
+            });
+
+            // Load saved layout and apply positions
+            fetch(`/load-layout?file_id=${encodeURIComponent(file.id)}`)
+                .then(r => r.json()).then(layout => {
+                    if (layout && layout.success && Array.isArray(layout.positions)) {
+                        const map = new Map(layout.positions.map(p => [p.id, p]));
+                        nodes.forEach(n => {
+                            const p = map.get(n.id);
+                            if (p && Number.isFinite(p.x) && Number.isFinite(p.y)) {
+                                n.fx = p.x;
+                                n.fy = p.y;
+                                n.x = p.x;
+                                n.y = p.y;
+                            }
+                        });
+                        simulation.alpha(0.2).restart();
+                    }
+                }).catch(() => {});
 
             node.append("circle")
                 .attr("r", d => d.type === 'file' ? 15 : (d.type === 'class' ? 10 : 8))
