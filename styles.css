@@ -185,11 +185,12 @@ body {
 }
 
 .gear-icon {
-    font-size: 24px;
+    font-size: 40px; /* doubled */
     cursor: pointer;
     color: var(--primary-green);
     transition: all 0.2s ease;
-    margin-left: 15px;
+    margin-left: 18px;
+    vertical-align: middle;
 }
 
 .gear-icon:hover {
