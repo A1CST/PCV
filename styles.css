@@ -223,7 +223,7 @@ body {
 
 #settings-title {
     color: var(--primary-green);
-    font-size: 24px;
+    font-size: 28px;
     font-weight: bold;
     margin-bottom: 20px;
     text-align: center;
@@ -510,7 +510,7 @@ input[type="color"]::-webkit-color-swatch {
 #add-project-title,
 #new-project-title {
     color: var(--primary-green);
-    font-size: 24px;
+    font-size: 28px;
     font-weight: bold;
     margin-bottom: 20px;
     text-align: center;
@@ -1285,7 +1285,7 @@ svg {
 
 #left-modal-title {
     color: var(--primary-green);
-    font-size: 18px;
+    font-size: 22px;
     font-weight: bold;
     margin-bottom: 15px;
 }
@@ -1369,7 +1369,7 @@ svg {
 
 #welcome-title {
     color: var(--primary-green);
-    font-size: 24px;
+    font-size: 28px;
     font-weight: bold;
     margin-bottom: 20px;
     text-align: center;
