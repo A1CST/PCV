@@ -1724,6 +1724,7 @@ def get_global_preferences():
                     'theme': global_prefs.get('theme', 'default'),
                     'custom_primary': global_prefs.get('custom_primary', '#00ff00'),
                     'custom_secondary': global_prefs.get('custom_secondary', '#121212'),
+                    'custom_text': global_prefs.get('custom_text', '#e5e7eb'),
                     'auto_save_gemini': global_prefs.get('auto_save_gemini', False)
                 })
     except Exception as e:
@@ -1734,6 +1735,7 @@ def get_global_preferences():
         'theme': 'default',
         'custom_primary': '#00ff00',
         'custom_secondary': '#121212',
+        'custom_text': '#e5e7eb',
         'auto_save_gemini': False
     })
 
