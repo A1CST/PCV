@@ -1093,13 +1093,13 @@ svg {
 #right-modal-gemini-form input,
 #gemini-request-bar input {
     flex-grow: 1;
-    padding: 10px;
+    padding: 12px;
     border-radius: 5px;
     border: 1px solid var(--border-color);
     background-color: var(--medium-gray);
     color: var(--light-gray);
     font-family: inherit;
-    font-size: clamp(18px, 2.4vh + 8px, 24px);
+    font-size: clamp(22px, 2.8vh + 10px, 28px);
     transition: all 0.2s ease;
 }
 
@@ -1114,14 +1114,14 @@ svg {
 #modal-gemini-form button,
 #right-modal-gemini-form button,
 #gemini-request-bar button {
-    padding: 10px 14px;
+    padding: 12px 16px;
     border-radius: 5px;
     border: none;
     background-color: var(--primary-green);
     color: var(--dark-gray);
     cursor: pointer;
     font-weight: bold;
-    font-size: clamp(18px, 2.4vh + 8px, 24px);
+    font-size: clamp(22px, 2.8vh + 10px, 28px);
     transition: all 0.2s ease;
 }
 
@@ -1331,6 +1331,7 @@ svg {
     color: var(--primary-green);
     font-weight: bold;
     margin-bottom: 10px;
+    font-size: 20px;
 }
 
 .return-item {
@@ -1340,7 +1341,7 @@ svg {
     border-radius: 3px;
     border-left: 3px solid var(--primary-green);
     font-family: 'Courier New', monospace;
-    font-size: 14px;
+    font-size: 20px;
 }
 
 /* Welcome Modal Styles */
