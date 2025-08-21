@@ -63,6 +63,8 @@ body {
     height: 100vh;
     overflow: hidden;
     transition: background-color 0.3s ease;
+    /* Scale base font size responsively for readability */
+    font-size: clamp(14px, 1.05vw + 6px, 18px);
 }
 
 .navbar {
@@ -201,10 +203,10 @@ body {
 
 #settings-content {
     background-color: var(--modal-bg);
-    padding: 30px;
+    padding: clamp(24px, 2vw, 40px);
     border-radius: 10px;
-    max-width: 500px;
-    width: 90%;
+    max-width: 860px;
+    width: min(92vw, 860px);
     border: 2px solid var(--primary-green);
     box-shadow: 0 10px 30px rgba(0, 255, 0, 0.3);
 }
@@ -487,10 +489,10 @@ input[type="color"]::-webkit-color-swatch {
 #add-project-content,
 #new-project-content {
     background-color: var(--modal-bg);
-    padding: 30px;
+    padding: clamp(24px, 2vw, 40px);
     border-radius: 10px;
-    max-width: 500px;
-    width: 90%;
+    max-width: 760px;
+    width: min(92vw, 760px);
     border: 2px solid var(--primary-green);
     box-shadow: 0 10px 30px rgba(0, 255, 0, 0.3);
 }
@@ -894,9 +896,9 @@ input[type="color"]::-webkit-color-swatch {
 }
 
 .swiper-container-main .swiper-slide {
-    width: 31%; /* Reduced by 20% from 39% */
-    height: 75%; /* Increased height to reduce squishing */
-    margin: 0 auto; /* Center individual slides */
+    width: 31%;
+    height: 75%;
+    margin: 0 auto;
 }
 
 /* Dynamic sizing for single script */

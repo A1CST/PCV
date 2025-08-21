@@ -1,0 +1,19 @@
+{
+  "theme": "light-blue",
+  "custom_primary": "#00ff00",
+  "custom_secondary": "#121212",
+  "auto_save": true,
+  "auto_save_gemini": false,
+  "gemini_enabled": false,
+  "gemini_initialize_on_startup": false,
+  "default_view": "graph",
+  "show_file_extensions": true,
+  "auto_refresh": false,
+  "created_at": "2025-08-21 10:51:09",
+  "last_modified": "2025-08-21 10:51:42",
+  "ai_provider": "none",
+  "ai_model": "qwen2.5-coder",
+  "ai_base_url": "http://localhost:11434",
+  "ai_timeout_sec": 120,
+  "gemini_cli_path": ""
+}

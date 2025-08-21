@@ -21,9 +21,16 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 directory_data = {}
 initial_analysis = ""
 analysis_complete = False
-GEMINI_ENABLED = False  # Set to False to disable Gemini analysis
-GEMINI_INITIALIZE_ON_STARTUP = False  # Whether to auto-initialize Gemini on startup
-GEMINI_INITIALIZED = False  # Whether Gemini has been initialized
+GEMINI_ENABLED = False  # Backward-compatible flag for AI enablement
+GEMINI_INITIALIZE_ON_STARTUP = False  # Whether to auto-initialize AI on startup
+GEMINI_INITIALIZED = False  # Whether AI has been initialized
+
+# Generic AI settings
+AI_PROVIDER = 'none'  # 'none' | 'gemini' | 'ollama'
+AI_MODEL = 'qwen2.5-coder'
+AI_BASE_URL = 'http://localhost:11434'
+AI_TIMEOUT_SEC = 120
+GEMINI_CLI_PATH = None  # Optional override for gemini CLI path
 
 # Console logging system
 console_logs = deque(maxlen=1000)  # Keep last 1000 log entries
@@ -86,7 +93,8 @@ class CodeFileHandler(FileSystemEventHandler):
                 "id": filename, 
                 "name": filename, 
                 "type": "file", 
-                "code": content
+                "code": content,
+                "file_path": file_path
             })
             
             # Add updated function and class nodes
@@ -99,7 +107,8 @@ class CodeFileHandler(FileSystemEventHandler):
                     "code": func['code'],
                     "returns": func.get('returns', []),
                     "called_by": [],
-                    "file": filename
+                    "file": filename,
+                    "file_path": file_path
                 })
                 directory_data['edges'].append({"source": filename, "target": func_id})
             
@@ -110,7 +119,8 @@ class CodeFileHandler(FileSystemEventHandler):
                     "name": cls['name'], 
                     "type": "class", 
                     "code": cls['code'],
-                    "file": filename
+                    "file": filename,
+                    "file_path": file_path
                 })
                 directory_data['edges'].append({"source": filename, "target": class_id})
             
@@ -155,13 +165,18 @@ WORKSPACES_DIR = "workspaces"
 GLOBAL_PREFERENCES_FILE = "global_preferences.json"
 
 def load_config():
-    global GEMINI_ENABLED, GEMINI_INITIALIZE_ON_STARTUP
+    global GEMINI_ENABLED, GEMINI_INITIALIZE_ON_STARTUP, AI_PROVIDER, AI_MODEL, AI_BASE_URL, AI_TIMEOUT_SEC, GEMINI_CLI_PATH
     try:
         if os.path.exists(CONFIG_FILE):
             with open(CONFIG_FILE, 'r') as f:
                 config = json.load(f)
                 GEMINI_ENABLED = config.get('gemini_enabled', False)
                 GEMINI_INITIALIZE_ON_STARTUP = config.get('gemini_initialize_on_startup', False)
+                AI_PROVIDER = config.get('ai_provider', 'none')
+                AI_MODEL = config.get('ai_model', 'qwen2.5-coder')
+                AI_BASE_URL = config.get('ai_base_url', 'http://localhost:11434')
+                AI_TIMEOUT_SEC = config.get('ai_timeout_sec', 120)
+                GEMINI_CLI_PATH = config.get('gemini_cli_path')
                 print(f"Loaded config: Gemini enabled={GEMINI_ENABLED}, Auto-initialize={GEMINI_INITIALIZE_ON_STARTUP}")
         else:
             print("No config file found, using default settings")
@@ -257,13 +272,19 @@ def save_config():
             with open(CONFIG_FILE, 'r') as f:
                 config = json.load(f)
         
-        # Update only the Gemini settings
+        # Update AI settings
         config['gemini_enabled'] = GEMINI_ENABLED
         config['gemini_initialize_on_startup'] = GEMINI_INITIALIZE_ON_STARTUP
+        config['ai_provider'] = AI_PROVIDER
+        config['ai_model'] = AI_MODEL
+        config['ai_base_url'] = AI_BASE_URL
+        config['ai_timeout_sec'] = AI_TIMEOUT_SEC
+        if GEMINI_CLI_PATH:
+            config['gemini_cli_path'] = GEMINI_CLI_PATH
         
         with open(CONFIG_FILE, 'w') as f:
             json.dump(config, f, indent=2)
-        print(f"Config saved: Gemini enabled={GEMINI_ENABLED}, Auto-initialize={GEMINI_INITIALIZE_ON_STARTUP}")
+        print(f"Config saved: AI provider={AI_PROVIDER}, Enabled={GEMINI_ENABLED}, Auto-init={GEMINI_INITIALIZE_ON_STARTUP}")
     except Exception as e:
         print(f"Error saving config: {e}")
 
@@ -677,7 +698,7 @@ def analyze_directory(directory):
         if not content:
             continue
         
-        nodes.append({"id": file_id, "name": filename, "type": "file", "code": content})
+        nodes.append({"id": file_id, "name": filename, "type": "file", "code": content, "file_path": file_path})
         
         for func in functions:
             func_id = f"{filename}::{func['name']}"
@@ -689,7 +710,8 @@ def analyze_directory(directory):
                 "code": func['code'],
                 "returns": func_data.get('returns', []),
                 "called_by": func_data.get('called_by', []),
-                "file": filename
+                "file": filename,
+                "file_path": file_path
             })
             edges.append({"source": file_id, "target": func_id})
             
@@ -700,7 +722,8 @@ def analyze_directory(directory):
                 "name": cls['name'], 
                 "type": "class", 
                 "code": cls['code'],
-                "file": filename
+                "file": filename,
+                "file_path": file_path
             })
             edges.append({"source": file_id, "target": class_id})
 
@@ -761,7 +784,7 @@ def execute_commands(commands, base_directory):
             
     return results
 
-def perform_gemini_analysis():
+def perform_ai_analysis():
     global initial_analysis, analysis_complete
     
     # Check for cached overview first
@@ -778,7 +801,7 @@ def perform_gemini_analysis():
                 
                 # Only skip analysis if we have a cached summary AND last_analysis is not null
                 if cached_summary and last_analysis is not None:
-                    log_to_console("Loading cached Gemini analysis...", "INFO")
+                    log_to_console("Loading cached AI analysis...", "INFO")
                     initial_analysis = cached_summary
                     analysis_complete = True
                     log_to_console("Cached analysis loaded successfully", "SUCCESS")
@@ -790,8 +813,7 @@ def perform_gemini_analysis():
     
     # Run new analysis if no cache found
     try:
-        log_to_console("Initializing Gemini analysis...", "INFO")
-        log_to_console("Connecting to Gemini API...", "INFO")
+        log_to_console("Initializing AI analysis...", "INFO")
         
         all_code = ""
         file_count = 0
@@ -813,24 +835,43 @@ def perform_gemini_analysis():
         
         analysis_prompt = "Analyze this codebase and provide a high-level overview. Focus on:\n1. Main purpose and functionality\n2. Key components and their relationships\n3. Architecture patterns used\n4. Potential areas of interest or complexity\n\nDo not change anything, just analyze and explain."
         
-        log_to_console("Sending code to Gemini for analysis...", "INFO")
-        
-        command = ["C:\\Users\\paytonmiller\\AppData\\Roaming\\npm\\gemini.cmd", "-p", "-"]
-        result = subprocess.run(
-            command,
-            input=analysis_prompt + "\n\n" + all_code,
-            capture_output=True,
-            text=True,
-            encoding='utf-8',
-            errors='replace',
-            check=True,
-            timeout=60  # Add a 60-second timeout
-        )
-        
-        log_to_console("Gemini analysis completed successfully", "SUCCESS")
+        response_text = None
+        if AI_PROVIDER == 'ollama':
+            try:
+                import requests
+                log_to_console(f"Calling Ollama at {AI_BASE_URL} model={AI_MODEL}", "INFO")
+                payload = {"model": AI_MODEL, "prompt": analysis_prompt + "\n\n" + all_code, "stream": False}
+                r = requests.post(f"{AI_BASE_URL}/api/generate", json=payload, timeout=AI_TIMEOUT_SEC)
+                r.raise_for_status()
+                data = r.json()
+                response_text = data.get('response', '')
+            except Exception as e:
+                log_to_console(f"Ollama request failed: {str(e)}", "ERROR")
+        elif AI_PROVIDER == 'gemini':
+            try:
+                command = [GEMINI_CLI_PATH or "gemini", "-p", "-"]
+                result = subprocess.run(
+                    command,
+                    input=analysis_prompt + "\n\n" + all_code,
+                    capture_output=True,
+                    text=True,
+                    encoding='utf-8',
+                    errors='replace',
+                    check=True,
+                    timeout=AI_TIMEOUT_SEC
+                )
+                response_text = result.stdout
+            except Exception as e:
+                log_to_console(f"Gemini CLI failed: {str(e)}", "ERROR")
+        else:
+            log_to_console("AI provider is 'none'; skipping analysis.", "INFO")
+            response_text = "AI analysis disabled."
+
+        if response_text is None:
+            response_text = "Initial analysis could not be completed."
+
         log_to_console("Caching analysis results...", "INFO")
-        
-        initial_analysis = result.stdout
+        initial_analysis = response_text
         analysis_complete = True
         
         # Save analysis to overview.json
@@ -839,7 +880,7 @@ def perform_gemini_analysis():
         log_to_console("Analysis cached and ready for user queries", "SUCCESS")
         
     except Exception as e:
-        log_to_console(f"Error during Gemini analysis: {str(e)}", "ERROR")
+        log_to_console(f"Error during AI analysis: {str(e)}", "ERROR")
         initial_analysis = "Initial analysis could not be completed."
         analysis_complete = True
 
@@ -900,13 +941,13 @@ def select_directory_and_analyze():
     print(f"Analyzed directory: {directory_path}")
     print(f"Found {len(directory_data['nodes'])} nodes and {len(directory_data['edges'])} edges.")
     
-    # Start Gemini analysis in a separate thread (only if enabled and auto-initialize is on)
-    if GEMINI_ENABLED and GEMINI_INITIALIZE_ON_STARTUP:
-        analysis_thread = threading.Thread(target=perform_gemini_analysis, daemon=True)
+    # Start AI analysis in a separate thread (only if enabled and auto-initialize is on)
+    if GEMINI_ENABLED and GEMINI_INITIALIZE_ON_STARTUP and AI_PROVIDER != 'none':
+        analysis_thread = threading.Thread(target=perform_ai_analysis, daemon=True)
         analysis_thread.start()
-        print("Gemini analysis started in background thread. Web server will start immediately.")
+        print("AI analysis started in background thread. Web server will start immediately.")
     else:
-        print("Gemini analysis disabled or not auto-initializing. Web server starting immediately.")
+        print("AI analysis disabled or not auto-initializing. Web server starting immediately.")
     
     return True
 
@@ -956,9 +997,9 @@ def data():
 
 @app.route('/initial-analysis')
 def get_initial_analysis():
-    if not GEMINI_ENABLED:
+    if not GEMINI_ENABLED or AI_PROVIDER == 'none':
         return jsonify({
-            'analysis': 'Gemini analysis is disabled.',
+            'analysis': 'AI analysis is disabled.',
             'complete': True
         })
     return jsonify({
@@ -987,9 +1028,14 @@ def get_settings():
                     'auto_save_gemini': global_prefs.get('auto_save_gemini', False)
                 }
                 # Also load gemini settings from global prefs
-                global GEMINI_ENABLED, GEMINI_INITIALIZE_ON_STARTUP
+                global GEMINI_ENABLED, GEMINI_INITIALIZE_ON_STARTUP, AI_PROVIDER, AI_MODEL, AI_BASE_URL, AI_TIMEOUT_SEC, GEMINI_CLI_PATH
                 GEMINI_ENABLED = global_prefs.get('gemini_enabled', False)
                 GEMINI_INITIALIZE_ON_STARTUP = global_prefs.get('gemini_initialize_on_startup', False)
+                AI_PROVIDER = global_prefs.get('ai_provider', AI_PROVIDER)
+                AI_MODEL = global_prefs.get('ai_model', AI_MODEL)
+                AI_BASE_URL = global_prefs.get('ai_base_url', AI_BASE_URL)
+                AI_TIMEOUT_SEC = global_prefs.get('ai_timeout_sec', AI_TIMEOUT_SEC)
+                GEMINI_CLI_PATH = global_prefs.get('gemini_cli_path', GEMINI_CLI_PATH)
     except Exception as e:
         print(f"Error loading global preferences: {e}")
     
@@ -997,15 +1043,24 @@ def get_settings():
         'gemini_enabled': GEMINI_ENABLED,
         'gemini_initialize_on_startup': GEMINI_INITIALIZE_ON_STARTUP,
         'gemini_initialized': GEMINI_INITIALIZED,
+        'ai_provider': AI_PROVIDER,
+        'ai_model': AI_MODEL,
+        'ai_base_url': AI_BASE_URL,
+        'ai_timeout_sec': AI_TIMEOUT_SEC,
         **theme_settings
     })
 
 @app.route('/settings', methods=['POST'])
 def update_settings():
-    global GEMINI_ENABLED, GEMINI_INITIALIZE_ON_STARTUP
+    global GEMINI_ENABLED, GEMINI_INITIALIZE_ON_STARTUP, AI_PROVIDER, AI_MODEL, AI_BASE_URL, AI_TIMEOUT_SEC, GEMINI_CLI_PATH
     data = request.json
     GEMINI_ENABLED = data.get('gemini_enabled', False)
     GEMINI_INITIALIZE_ON_STARTUP = data.get('gemini_initialize_on_startup', False)
+    AI_PROVIDER = data.get('ai_provider', AI_PROVIDER)
+    AI_MODEL = data.get('ai_model', AI_MODEL)
+    AI_BASE_URL = data.get('ai_base_url', AI_BASE_URL)
+    AI_TIMEOUT_SEC = data.get('ai_timeout_sec', AI_TIMEOUT_SEC)
+    GEMINI_CLI_PATH = data.get('gemini_cli_path', GEMINI_CLI_PATH)
     
     # Save all settings to global preferences
     try:
@@ -1025,6 +1080,11 @@ def update_settings():
         global_prefs.update({
             'gemini_enabled': GEMINI_ENABLED,
             'gemini_initialize_on_startup': GEMINI_INITIALIZE_ON_STARTUP,
+            'ai_provider': AI_PROVIDER,
+            'ai_model': AI_MODEL,
+            'ai_base_url': AI_BASE_URL,
+            'ai_timeout_sec': AI_TIMEOUT_SEC,
+            'gemini_cli_path': GEMINI_CLI_PATH,
             'theme': data.get('theme', 'default'),
             'custom_primary': data.get('custom_primary', '#00ff00'),
             'custom_secondary': data.get('custom_secondary', '#121212'),
@@ -1046,6 +1106,12 @@ def update_settings():
         
         config['gemini_enabled'] = GEMINI_ENABLED
         config['gemini_initialize_on_startup'] = GEMINI_INITIALIZE_ON_STARTUP
+        config['ai_provider'] = AI_PROVIDER
+        config['ai_model'] = AI_MODEL
+        config['ai_base_url'] = AI_BASE_URL
+        config['ai_timeout_sec'] = AI_TIMEOUT_SEC
+        if GEMINI_CLI_PATH:
+            config['gemini_cli_path'] = GEMINI_CLI_PATH
         
         with open(CONFIG_FILE, 'w') as f:
             json.dump(config, f, indent=2)
@@ -1059,16 +1125,16 @@ def update_settings():
 @app.route('/initialize-gemini', methods=['POST'])
 def initialize_gemini():
     global GEMINI_INITIALIZED
-    if not GEMINI_ENABLED:
-        return jsonify({'error': 'Gemini must be enabled first'}), 400
+    if not GEMINI_ENABLED or AI_PROVIDER == 'none':
+        return jsonify({'error': 'AI must be enabled first'}), 400
     
     if not GEMINI_INITIALIZED:
-        analysis_thread = threading.Thread(target=perform_gemini_analysis, daemon=True)
+        analysis_thread = threading.Thread(target=perform_ai_analysis, daemon=True)
         analysis_thread.start()
         GEMINI_INITIALIZED = True
-        return jsonify({'success': True, 'message': 'Gemini analysis started'})
+        return jsonify({'success': True, 'message': 'AI analysis started'})
     else:
-        return jsonify({'success': True, 'message': 'Gemini already initialized'})
+        return jsonify({'success': True, 'message': 'AI already initialized'})
 
 @app.route('/first-run')
 def first_run_page():
@@ -1259,6 +1325,41 @@ def validate_parent_directory():
         print(f"Error in validate_parent_directory: {e}")
         return jsonify({'success': False, 'error': str(e)})
 
+@app.route('/browse-directory', methods=['POST'])
+def browse_directory():
+    """Open a native folder picker and return the selected directory path."""
+    try:
+        # Prefer a Windows-native dialog via PowerShell to avoid Tk threading issues
+        if os.name == 'nt':
+            try:
+                ps_cmd = [
+                    'powershell', '-NoProfile', '-STA', '-Command',
+                    "[void][reflection.assembly]::LoadWithPartialName('System.Windows.Forms');"
+                    "$fbd = New-Object System.Windows.Forms.FolderBrowserDialog;"
+                    "$fbd.Description='Select a folder';"
+                    "if($fbd.ShowDialog() -eq 'OK'){ Write-Output $fbd.SelectedPath }"
+                ]
+                result = subprocess.run(ps_cmd, capture_output=True, text=True, timeout=120)
+                path = (result.stdout or '').strip()
+                if path:
+                    return jsonify({'success': True, 'directory_path': path})
+            except Exception as e:
+                print(f"PowerShell folder dialog failed: {e}")
+
+        # Fallback to Tkinter
+        root = tk.Tk()
+        root.withdraw()
+        selected = filedialog.askdirectory(title="Select a folder")
+        try:
+            root.destroy()
+        except Exception:
+            pass
+        if not selected:
+            return jsonify({'success': False, 'error': 'No directory selected'})
+        return jsonify({'success': True, 'directory_path': selected})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
 @app.route('/save-workspace', methods=['POST'])
 def save_workspace():
     data = request.json
@@ -1278,11 +1379,11 @@ def save_workspace():
         # Start file monitoring
         start_file_monitoring(directory_path)
         
-        # Start Gemini analysis if enabled and auto-initialize is on
-        if GEMINI_ENABLED and GEMINI_INITIALIZE_ON_STARTUP:
-            analysis_thread = threading.Thread(target=perform_gemini_analysis, daemon=True)
+        # Start AI analysis if enabled and auto-initialize is on
+        if GEMINI_ENABLED and GEMINI_INITIALIZE_ON_STARTUP and AI_PROVIDER != 'none':
+            analysis_thread = threading.Thread(target=perform_ai_analysis, daemon=True)
             analysis_thread.start()
-            print("Gemini analysis started in background thread.")
+            print("AI analysis started in background thread.")
         
         return jsonify({'success': True, 'message': 'Workspace saved and analysis started'})
     else:
@@ -1416,20 +1517,31 @@ Based on the entire project, please respond to the following request: {user_prom
         full_prompt += f"Now, please respond to the following request: {user_prompt}"
 
     try:
-        command = ["C:\\Users\\paytonmiller\\AppData\\Roaming\\npm\\gemini.cmd", "-p", "-"]
-        result = subprocess.run(
-            command,
-            input=full_prompt,
-            capture_output=True,
-            text=True,
-            check=True,
-            timeout=120 # Increased timeout for potentially larger context
-        )
-        gemini_response = result.stdout
-        log_to_console(f"Raw Gemini response: {gemini_response}", "DEBUG")
+        response_text = None
+        if AI_PROVIDER == 'ollama':
+            import requests
+            payload = {"model": AI_MODEL, "prompt": full_prompt, "stream": False}
+            r = requests.post(f"{AI_BASE_URL}/api/generate", json=payload, timeout=AI_TIMEOUT_SEC)
+            r.raise_for_status()
+            response_text = r.json().get('response', '')
+        elif AI_PROVIDER == 'gemini':
+            command = [GEMINI_CLI_PATH or "gemini", "-p", "-"]
+            result = subprocess.run(
+                command,
+                input=full_prompt,
+                capture_output=True,
+                text=True,
+                check=True,
+                timeout=AI_TIMEOUT_SEC
+            )
+            response_text = result.stdout
+        else:
+            return jsonify({'error': 'AI provider disabled'}), 400
+
+        log_to_console(f"Raw AI response: {response_text}", "DEBUG")
         
-        # Parse commands from Gemini's response
-        commands = parse_gemini_commands(gemini_response)
+        # Parse commands from AI response (if using the fenced format)
+        commands = parse_gemini_commands(response_text)
         
         action_results = []
         if commands:
@@ -1442,7 +1554,7 @@ Based on the entire project, please respond to the following request: {user_prom
                 action_results.append("Cannot execute commands: No active workspace directory found.")
         
         # Combine Gemini's original response with action results
-        final_response = gemini_response
+        final_response = response_text
         if action_results:
             final_response += "\n\n--- Actions Performed ---" + "\n".join(action_results)
             
@@ -1450,7 +1562,7 @@ Based on the entire project, please respond to the following request: {user_prom
         return jsonify({'response': final_response})
 
     except FileNotFoundError:
-        return jsonify({'error': 'The "gemini" command was not found.'}), 500
+        return jsonify({'error': 'AI CLI not found'}), 500
     except subprocess.CalledProcessError as e:
         error_message = f"Gemini CLI failed with exit code {e.returncode}:\n{e.stderr}"
         return jsonify({'error': error_message}), 500
@@ -1552,14 +1664,12 @@ def get_current_workspace_path():
     if current_monitoring_directory:
         return current_monitoring_directory
     
-    # Fallback: try to get from workspace config
+    # Fallback: read from our config and workspaces
     try:
-        workspace_config = load_workspace_config()
-        if workspace_config and workspace_config.get('current_workspace'):
-            workspace_name = workspace_config['current_workspace']
-            for workspace in workspace_config.get('workspaces', []):
-                if workspace['name'] == workspace_name:
-                    return workspace['directory_path']
+        current_ws = get_current_workspace()
+        workspaces = get_workspaces()
+        if current_ws in workspaces:
+            return workspaces[current_ws].get('directory')
     except Exception as e:
         print(f"Error getting current workspace path: {e}")
     

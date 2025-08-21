@@ -1,0 +1,19 @@
+{
+  "view_settings": {
+    "default_layout": "coverflow",
+    "show_thumbnails": true,
+    "auto_expand_functions": false
+  },
+  "analysis_settings": {
+    "auto_analyze_on_change": false,
+    "include_test_files": true,
+    "max_function_depth": 10
+  },
+  "display_settings": {
+    "font_size": "medium",
+    "color_scheme": "default",
+    "show_line_numbers": true
+  },
+  "created_at": "2025-08-21 10:57:06",
+  "last_modified": "2025-08-21 10:57:06"
+}

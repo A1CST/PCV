@@ -197,6 +197,30 @@
                 <div class="setting-description">Allow Gemini to analyze your codebase</div>
             </div>
             <div class="setting-item">
+                <label class="setting-label">AI Provider</label>
+                <select id="ai-provider-selector" class="theme-select">
+                    <option value="none">None (disabled)</option>
+                    <option value="gemini">Gemini CLI</option>
+                    <option value="ollama">Ollama (local)</option>
+                </select>
+                <div class="setting-description">Choose which AI backend to use</div>
+            </div>
+            <div class="setting-item">
+                <label class="setting-label">AI Model</label>
+                <input type="text" id="ai-model-input" class="workspace-input" placeholder="e.g., qwen2.5-coder or llama3.1:8b">
+                <div class="setting-description">Model name for the selected provider</div>
+            </div>
+            <div class="setting-item">
+                <label class="setting-label">AI Base URL</label>
+                <input type="text" id="ai-base-url-input" class="workspace-input" placeholder="http://localhost:11434">
+                <div class="setting-description">Only used for Ollama; ignore for Gemini</div>
+            </div>
+            <div class="setting-item">
+                <label class="setting-label">Gemini CLI Path (optional)</label>
+                <input type="text" id="gemini-cli-path-input" class="workspace-input" placeholder="gemini">
+                <div class="setting-description">Leave blank to use system 'gemini'</div>
+            </div>
+            <div class="setting-item">
                 <label class="setting-label">Initialize Gemini on Startup</label>
                 <label class="toggle-switch">
                     <input type="checkbox" id="gemini-startup-toggle">
@@ -276,9 +300,12 @@
             <div class="add-project-step">
                 <label class="add-project-label">Step 1: Enter Project Directory Path</label>
                 <input type="text" class="add-project-input" id="add-project-directory" placeholder="Enter the full path to your Python project folder (e.g., C:\MyProject or /home/user/myproject)">
+                <div style="display:flex; gap:10px; flex-wrap:wrap;">
                 <button class="add-project-button secondary" onclick="validateAddProjectDirectory()">
                     <span id="validate-add-project-text">Validate Directory</span>
                 </button>
+                <button class="add-project-button secondary" onclick="browseAddProjectDirectory()">Browse…</button>
+                </div>
                 <div class="add-project-display" id="add-project-directory-display">
                     <span class="add-project-placeholder">Enter a directory path above and click "Validate Directory"</span>
                 </div>
@@ -306,9 +333,12 @@
             <div class="add-project-step">
                 <label class="add-project-label">Step 1: Select Parent Directory</label>
                 <input type="text" class="add-project-input" id="new-project-parent-directory" placeholder="Enter the parent directory where the new project folder will be created (e.g., C:\Projects or /home/user/projects)">
+                <div style="display:flex; gap:10px; flex-wrap:wrap;">
                 <button class="add-project-button secondary" onclick="validateNewProjectParentDirectory()">
                     <span id="validate-new-project-text">Validate Directory</span>
                 </button>
+                <button class="add-project-button secondary" onclick="browseNewProjectParentDirectory()">Browse…</button>
+                </div>
                 <div class="add-project-display" id="new-project-parent-display">
                     <span class="add-project-placeholder">Enter a parent directory path above and click "Validate Directory"</span>
                 </div>
@@ -496,17 +526,89 @@
                 .attr("width", width)
                 .attr("height", height)
                 .attr("viewBox", `0 0 ${width} ${height}`)
-                .call(d3.zoom().on("zoom", function (event) {
-                   g.attr("transform", event.transform)
-                }));
+                .call(
+                    d3.zoom()
+                      .scaleExtent([0.6, 4])
+                      .on("zoom", function (event) {
+                          g.attr("transform", event.transform);
+                          const scale = event.transform.k || 1;
+                          // Reduce label clutter when zoomed out
+                          g.selectAll('text').attr('display', scale < 0.7 ? 'none' : null);
+                      })
+                );
 
             const g = svg.append("g");
 
+            // --- Compute soft clusters to reduce crowding ---
+            function splitNameIntoTokens(name) {
+                if (!name) return [];
+                const snake = name.split('_').filter(Boolean);
+                if (snake.length > 0) return snake;
+                // camelCase fallback
+                return name.replace(/([a-z])([A-Z])/g, '$1 $2').split(' ').map(s => s.toLowerCase());
+            }
+
+            const verbBuckets = new Set(['get','set','extract','integrate','process','calculate','generate','optimize','provide','is','has','make','build','create','update','load','save','render']);
+            function clusterKeyForNode(n) {
+                if (n.type === 'class') return 'class';
+                if (n.type === 'file') return 'file';
+                const tokens = splitNameIntoTokens(n.name || '');
+                if (tokens.length === 0) return 'other';
+                const first = tokens[0];
+                return verbBuckets.has(first) ? first : (tokens[0].length <= 2 ? 'other' : tokens[0]);
+            }
+
+            nodes.forEach(n => { n.cluster = clusterKeyForNode(n); });
+            const clusterKeys = Array.from(new Set(nodes.filter(n => n.type !== 'file').map(n => n.cluster)));
+            const centerX = width / 2;
+            const centerY = height / 2;
+            const innerR = Math.min(width, height) * 0.28;  // for classes
+            const outerR = Math.min(width, height) * 0.42;  // for function clusters
+
+            const clusterTargets = {};
+            // place class ring if present
+            if (clusterKeys.includes('class')) {
+                clusterTargets['class'] = { x: centerX, y: centerY - innerR };
+            }
+            // place other clusters around outer ring
+            const functionClusters = clusterKeys.filter(k => k !== 'class');
+            const kCount = Math.max(1, functionClusters.length);
+            functionClusters.forEach((k, i) => {
+                const angle = (i / kCount) * 2 * Math.PI - Math.PI / 2; // start at top
+                clusterTargets[k] = { x: centerX + outerR * Math.cos(angle), y: centerY + outerR * Math.sin(angle) };
+            });
+
+            // Adaptive force constants based on node count and degrees
+            const nodeCount = nodes.length;
+            const baseDist = 70;
+            const dist = baseDist + 12 * Math.log(Math.max(2, nodeCount));
+            const charge = -140 - 35 * Math.log(Math.max(2, nodeCount));
+            const collide = 18 + Math.min(10, Math.log(Math.max(2, nodeCount)) * 4);
+
+            // Degree map to space out hubs a bit more
+            const degreeMap = {};
+            links.forEach(l => {
+                const s = typeof l.source === 'object' ? l.source.id : l.source;
+                const t = typeof l.target === 'object' ? l.target.id : l.target;
+                degreeMap[s] = (degreeMap[s] || 0) + 1;
+                degreeMap[t] = (degreeMap[t] || 0) + 1;
+            });
+
             const simulation = d3.forceSimulation(nodes)
-                .force("link", d3.forceLink(links).id(d => d.id).distance(80))
-                .force("charge", d3.forceManyBody().strength(-200))
+                .force("link", d3.forceLink(links).id(d => d.id).distance(l => {
+                    const sid = l.source && l.source.id ? l.source.id : l.source;
+                    const tid = l.target && l.target.id ? l.target.id : l.target;
+                    const sd = Math.log(1 + (degreeMap[sid] || 1));
+                    const td = Math.log(1 + (degreeMap[tid] || 1));
+                    return dist + 8 * (sd + td);
+                }))
+                .force("charge", d3.forceManyBody().strength(charge))
                 .force("center", d3.forceCenter(width / 2, height / 2))
-                .force("collision", d3.forceCollide().radius(20));
+                .force("collision", d3.forceCollide().radius(collide))
+                // pull nodes toward their cluster centroids
+                .force("clusterX", d3.forceX(d => (clusterTargets[d.cluster]?.x) || centerX).strength(d => d.type === 'file' ? 1 : 0.12))
+                .force("clusterY", d3.forceY(d => (clusterTargets[d.cluster]?.y) || centerY).strength(d => d.type === 'file' ? 1 : 0.12))
+                .alphaDecay(0.06);
             
             // Fix the file node (green node) at the center
             const fileNode = nodes.find(n => n.type === 'file');
@@ -606,6 +708,33 @@
                 node
                     .attr("transform", d => `translate(${d.x},${d.y})`);
             });
+
+            // Zoom-to-fit utility
+            function zoomToFit(padding = 24) {
+                try {
+                    const bbox = g.node().getBBox();
+                    if (!isFinite(bbox.width) || !isFinite(bbox.height) || bbox.width === 0 || bbox.height === 0) return;
+                    const scale = Math.min(
+                        (width - padding * 2) / bbox.width,
+                        (height - padding * 2) / bbox.height
+                    );
+                    const tx = (width - bbox.width * scale) / 2 - bbox.x * scale;
+                    const ty = (height - bbox.height * scale) / 2 - bbox.y * scale;
+                    const t = d3.zoomIdentity.translate(tx, ty).scale(scale);
+                    svg.transition().duration(400).call(d3.zoom().transform, t);
+                } catch (_) { /* ignore */ }
+            }
+
+            // Fit after simulation stabilizes
+            simulation.on("end", () => {
+                zoomToFit();
+            });
+
+            // Refit on container resize
+            const ro = new ResizeObserver(() => {
+                zoomToFit();
+            });
+            ro.observe(container);
         }
         
         function drag(simulation) {
@@ -1040,6 +1169,12 @@
                     // Load auto-save setting
                     document.getElementById('auto-save-toggle').checked = data.auto_save_gemini || false;
                     settingsData.auto_save_gemini = data.auto_save_gemini || false;
+
+                    // Load AI provider settings
+                    document.getElementById('ai-provider-selector').value = data.ai_provider || 'none';
+                    document.getElementById('ai-model-input').value = data.ai_model || '';
+                    document.getElementById('ai-base-url-input').value = data.ai_base_url || '';
+                    document.getElementById('gemini-cli-path-input').value = data.gemini_cli_path || '';
                     
                     // Show custom section if needed
                     if (theme === 'custom') {
@@ -1100,6 +1235,10 @@
                 body: JSON.stringify({
                     gemini_enabled: geminiEnabled,
                     gemini_initialize_on_startup: geminiStartup,
+                    ai_provider: document.getElementById('ai-provider-selector').value,
+                    ai_model: document.getElementById('ai-model-input').value.trim(),
+                    ai_base_url: document.getElementById('ai-base-url-input').value.trim(),
+                    gemini_cli_path: document.getElementById('gemini-cli-path-input').value.trim(),
                     theme: settingsData.theme,
                     custom_primary: settingsData.custom_primary,
                     custom_secondary: settingsData.custom_secondary,
@@ -1541,6 +1680,15 @@
                 on: {
                     slideChange: function () {
                         updateActiveNavButton(this.realIndex);
+                        // Refit the active slide's graph on slide change
+                        setTimeout(() => {
+                            const active = document.querySelector('.swiper-slide-active div:last-child svg');
+                            if (active) {
+                                // Trigger a resize by dispatching a ResizeObserver refresh via size change
+                                const evt = new Event('resize');
+                                window.dispatchEvent(evt);
+                            }
+                        }, 250);
                     }
                 }
             });
@@ -1603,6 +1751,28 @@
                 messageDiv.innerHTML = `<div style="color: var(--primary-color); margin-top: 10px; font-size: 14px;">Error: ${error.message}</div>`;
                 validateText.textContent = 'Validate Directory';
             });
+        }
+
+        async function browseAddProjectDirectory() {
+            const messageDiv = document.getElementById('add-project-message');
+            const validateText = document.getElementById('validate-add-project-text');
+            try {
+                const resp = await fetch('/browse-directory', { method: 'POST' });
+                const data = await resp.json();
+                if (data.success) {
+                    document.getElementById('add-project-directory').value = data.directory_path;
+                    addProjectDirectory = data.directory_path;
+                    document.getElementById('add-project-directory-display').innerHTML = `
+                        <span style="color: var(--primary-green);">✓</span>
+                        <span style=\"margin-left: 10px;\">${addProjectDirectory}</span>`;
+                    validateText.textContent = 'Change Directory';
+                    updateAddProjectContinueButton();
+                } else {
+                    messageDiv.innerHTML = `<div style="color: var(--primary-color); margin-top: 10px; font-size: 14px;">Error: ${data.error}</div>`;
+                }
+            } catch (e) {
+                messageDiv.innerHTML = `<div style="color: var(--primary-color); margin-top: 10px; font-size: 14px;">Error: ${e.message}</div>`;
+            }
         }
 
         function updateAddProjectContinueButton() {
@@ -1721,6 +1891,28 @@
                 messageDiv.innerHTML = `<div style="color: var(--primary-color); margin-top: 10px; font-size: 14px;">Error: ${error.message}</div>`;
                 validateText.textContent = 'Validate Directory';
             });
+        }
+
+        async function browseNewProjectParentDirectory() {
+            const messageDiv = document.getElementById('new-project-message');
+            const validateText = document.getElementById('validate-new-project-text');
+            try {
+                const resp = await fetch('/browse-directory', { method: 'POST' });
+                const data = await resp.json();
+                if (data.success) {
+                    document.getElementById('new-project-parent-directory').value = data.directory_path;
+                    newProjectParentDirectory = data.directory_path;
+                    document.getElementById('new-project-parent-display').innerHTML = `
+                        <span style="color: var(--primary-green);">✓</span>
+                        <span style=\"margin-left: 10px;\">${newProjectParentDirectory}</span>`;
+                    validateText.textContent = 'Change Directory';
+                    updateNewProjectContinueButton();
+                } else {
+                    messageDiv.innerHTML = `<div style="color: var(--primary-color); margin-top: 10px; font-size: 14px;">Error: ${data.error}</div>`;
+                }
+            } catch (e) {
+                messageDiv.innerHTML = `<div style="color: var(--primary-color); margin-top: 10px; font-size: 14px;">Error: ${e.message}</div>`;
+            }
         }
 
         function updateNewProjectContinueButton() {

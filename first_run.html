@@ -29,30 +29,31 @@
             align-items: center;
             height: 100vh;
             overflow: hidden;
+            /* Scale base font size with viewport for better readability */
+            font-size: clamp(16px, 1.35vw + 9px, 24px);
         }
 
         .setup-container {
             background-color: var(--modal-bg);
-            padding: 40px;
+            padding: clamp(34px, 3.8vw, 58px);
             border-radius: 15px;
             border: 2px solid var(--primary-green);
             box-shadow: 0 10px 30px rgba(0, 255, 0, 0.3);
-            max-width: 600px;
-            width: 90%;
+            width: min(76vw, 1020px);
             text-align: center;
         }
 
         .setup-title {
             color: var(--primary-green);
-            font-size: 28px;
+            font-size: clamp(32px, 2.6vw + 14px, 48px);
             font-weight: bold;
-            margin-bottom: 10px;
+            margin-bottom: clamp(10px, 1.2vw, 18px);
         }
 
         .setup-subtitle {
             color: var(--text-color);
-            font-size: 16px;
-            margin-bottom: 30px;
+            font-size: clamp(16px, 1.35vw + 7px, 22px);
+            margin-bottom: clamp(22px, 2.4vw, 38px);
             opacity: 0.8;
         }
 
@@ -89,14 +90,14 @@
 
         .workspace-input {
             width: 100%;
-            padding: 12px;
+            padding: clamp(12px, 1.45vw, 18px);
             border-radius: 8px;
             border: 1px solid var(--border-color);
             background-color: var(--dark-gray);
             color: var(--text-color);
             font-family: inherit;
-            font-size: 14px;
-            margin-bottom: 15px;
+            font-size: clamp(16px, 1.35vw + 6px, 20px);
+            margin-bottom: clamp(14px, 1.6vw, 24px);
         }
 
         .workspace-input:focus {
@@ -109,11 +110,11 @@
             background-color: var(--primary-green);
             color: var(--dark-gray);
             border: none;
-            padding: 12px 24px;
+            padding: clamp(12px, 1.35vw, 20px) clamp(20px, 1.9vw, 32px);
             border-radius: 8px;
             cursor: pointer;
             font-weight: bold;
-            font-size: 14px;
+            font-size: clamp(16px, 1.35vw + 6px, 20px);
             margin: 5px;
             transition: all 0.2s ease;
         }
@@ -176,9 +177,12 @@
                 <div class="setup-step">
             <label class="step-label">Step 1: Enter Project Directory Path</label>
             <input type="text" class="workspace-input" id="directory-path" placeholder="Enter the full path to your Python project folder (e.g., C:\MyProject or /home/user/myproject)" style="margin-bottom: 10px;">
+            <div style="display:flex; gap:10px;">
             <button class="setup-button secondary" onclick="validateDirectory()">
                 <span id="validate-text">Validate Directory</span>
             </button>
+            <button class="setup-button secondary" onclick="browseForDirectory()">Browse…</button>
+            </div>
             <div class="directory-display" id="directory-display" style="margin-top: 15px;">
                 <span class="directory-placeholder">Enter a directory path above and click "Validate Directory"</span>
             </div>
@@ -202,6 +206,26 @@
     <script>
         let selectedDirectory = '';
         let workspaceName = '';
+
+        async function browseForDirectory() {
+            const messageDiv = document.getElementById('message');
+            try {
+                const resp = await fetch('/browse-directory', { method: 'POST' });
+                const data = await resp.json();
+                if (data.success) {
+                    selectedDirectory = data.directory_path;
+                    document.getElementById('directory-path').value = selectedDirectory;
+                    document.getElementById('directory-display').innerHTML = `
+                        <span style="color: var(--primary-green);">✓</span>
+                        <span style="margin-left: 10px;">${selectedDirectory}</span>`;
+                    updateContinueButton();
+                } else {
+                    messageDiv.innerHTML = `<div class="error-message">${data.error}</div>`;
+                }
+            } catch (e) {
+                messageDiv.innerHTML = `<div class="error-message">${e.message}</div>`;
+            }
+        }
 
         function validateDirectory() {
             const validateText = document.getElementById('validate-text');
