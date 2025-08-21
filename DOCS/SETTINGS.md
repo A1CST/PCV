@@ -10,6 +10,7 @@
   - `ai_base_url` (string; for Ollama)
   - `gemini_cli_path` (string; optional)
   - `theme`, `custom_primary`, `custom_secondary`, `auto_save_gemini`
+  - `debug_log_ai` (bool; default false) gates verbose AI response logging
 
 ## Analysis
 - GET `/initial-analysis`: cached or latest analysis text (provider-aware).
@@ -23,3 +24,5 @@
 
 ## Folder Browsing
 - POST `/browse-directory`: returns `{ success, directory_path }` using PowerShell folder dialog on Windows; Tk fallback else.
+
+Note: In CI/headless environments, Tk is disabled; fallback returns an error JSON.

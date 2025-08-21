@@ -1,5 +1,5 @@
 {
-  "theme": "light-blue",
+  "theme": "default",
   "custom_primary": "#00ff00",
   "custom_secondary": "#121212",
   "auto_save": true,
@@ -10,10 +10,11 @@
   "show_file_extensions": true,
   "auto_refresh": false,
   "created_at": "2025-08-21 10:51:09",
-  "last_modified": "2025-08-21 10:51:42",
+  "last_modified": "2025-08-21 12:20:15",
   "ai_provider": "none",
   "ai_model": "qwen2.5-coder",
   "ai_base_url": "http://localhost:11434",
-  "ai_timeout_sec": 120,
-  "gemini_cli_path": ""
+  "ai_timeout_sec": 5,
+  "gemini_cli_path": "",
+  "debug_log_ai": false
 }
