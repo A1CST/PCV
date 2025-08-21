@@ -626,6 +626,7 @@ input[type="color"]::-webkit-color-swatch {
     justify-content: flex-start;
     align-items: center;
     overflow: hidden;
+    height: calc(100vh - (5vh + 12vh + 10vh));
 }
 
 .carousel-section {
@@ -659,7 +660,7 @@ input[type="color"]::-webkit-color-swatch {
 
 .panel-title {
     color: var(--primary-green);
-    font-size: 16px;
+    font-size: clamp(14px, 1.6vh + 6px, 18px);
     font-weight: bold;
     margin: 0;
     padding: 15px 15px 8px 15px;
@@ -858,6 +859,7 @@ input[type="color"]::-webkit-color-swatch {
     color: var(--primary-green);
     font-weight: bold;
     margin-right: 10px;
+    font-size: clamp(14px, 1.6vh + 6px, 18px);
 }
 
 #file-navigation {
@@ -875,7 +877,7 @@ input[type="color"]::-webkit-color-swatch {
     padding: 6px 12px;
     border-radius: 4px;
     cursor: pointer;
-    font-size: 18px; /* ~14pt for legibility */
+    font-size: clamp(14px, 1.6vh + 6px, 18px);
     transition: all 0.2s ease;
     margin-right: 8px;
 }
@@ -1092,6 +1094,7 @@ svg {
     background-color: var(--medium-gray);
     color: var(--light-gray);
     font-family: inherit;
+    font-size: clamp(14px, 1.6vh + 6px, 18px);
     transition: all 0.2s ease;
 }
 
@@ -1106,13 +1109,14 @@ svg {
 #modal-gemini-form button,
 #right-modal-gemini-form button,
 #gemini-request-bar button {
-    padding: 10px 15px;
+    padding: 10px 14px;
     border-radius: 5px;
     border: none;
     background-color: var(--primary-green);
     color: var(--dark-gray);
     cursor: pointer;
     font-weight: bold;
+    font-size: clamp(14px, 1.6vh + 6px, 18px);
     transition: all 0.2s ease;
 }
 
