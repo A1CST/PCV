@@ -1,0 +1,1913 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Python Code Visualizer</title>
+    <link rel="stylesheet" href="https://unpkg.com/swiper/swiper-bundle.min.css" />
+    <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+    <div class="navbar">
+        <div class="navbar-left">
+            <h1>Python Code Visualizer</h1>
+            <div class="project-selector">
+                <select id="project-select" onchange="switchProject()">
+                    <option value="">Loading projects...</option>
+                </select>
+                <button class="navbar-button add-project-btn" onclick="openAddProject()">+ Add Project</button>
+                <button class="navbar-button add-project-btn" onclick="openNewProject()">+ New Project</button>
+                <button class="navbar-button add-project-btn" onclick="removeCurrentProject()" id="remove-project-btn" style="background-color: var(--primary-color); border-color: var(--primary-color); color: var(--secondary-color);" title="Remove current project">Remove</button>
+            </div>
+        </div>
+        <div class="navbar-center">
+            <div class="analysis-status" id="analysis-status">Analyzing codebase...</div>
+        </div>
+        <div class="navbar-controls">
+            <button class="navbar-button" onclick="exportData()">Export Data</button>
+            <button class="navbar-button" onclick="toggleFullscreen()">Fullscreen</button>
+            <button class="navbar-button" onclick="refreshView()">Refresh</button>
+            <div class="gear-icon" onclick="openSettings()">⚙️</div>
+        </div>
+    </div>
+    
+    <div class="sub-navbar">
+        <span class="sub-navbar-label">Files:</span>
+        <div id="file-navigation">
+            <!-- File navigation buttons will be populated by JavaScript -->
+        </div>
+    </div>
+    
+    <div class="main-container">
+        <div class="carousel-section">
+            <div class="swiper-container swiper-container-main">
+                <div class="swiper-wrapper"></div>
+                <div class="swiper-button-next" style="color: var(--primary-color);"></div>
+                <div class="swiper-button-prev" style="color: var(--primary-color);"></div>
+            </div>
+        </div>
+        
+        <div class="bottom-panels">
+            <div class="panel" id="todo-panel">
+                <div class="panel-title">📋 Todo List</div>
+                <div class="panel-content">
+                    <div id="todo-content">
+                        <div class="todo-item">Review function complexity in main.py</div>
+                        <div class="todo-item">Add docstrings to utility functions</div>
+                        <div class="todo-item completed">Fix import statements in config.py</div>
+                        <div class="todo-item">Optimize database queries in data_handler.py</div>
+                        <div class="todo-item">Add error handling to network calls</div>
+                        <div class="todo-item">Update README with new features</div>
+                        <div class="todo-item completed">Refactor authentication module</div>
+                        <div class="todo-item">Add unit tests for core functions</div>
+                        <div class="todo-item">Implement caching mechanism</div>
+                        <div class="todo-item">Add logging throughout application</div>
+                        <div class="todo-item completed">Set up CI/CD pipeline</div>
+                        <div class="todo-item">Write integration tests</div>
+                        <div class="todo-item">Optimize memory usage</div>
+                        <div class="todo-item">Add API documentation</div>
+                        <div class="todo-item">Implement rate limiting</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="panel" id="issues-panel">
+                <div class="panel-title">⚠️ Potential Issues</div>
+                <div class="panel-content">
+                    <div id="issues-content">
+                        <div class="issue-item">
+                            <span class="issue-severity severity-high">HIGH</span>
+                            Unused variable 'temp_data' in process_file()
+                        </div>
+                        <div class="issue-item">
+                            <span class="issue-severity severity-medium">MED</span>
+                            Function 'calculate_metrics()' has high complexity
+                        </div>
+                        <div class="issue-item">
+                            <span class="issue-severity severity-low">LOW</span>
+                            Missing type hints in helper functions
+                        </div>
+                        <div class="issue-item">
+                            <span class="issue-severity severity-high">HIGH</span>
+                            Potential memory leak in file_processor.py
+                        </div>
+                        <div class="issue-item">
+                            <span class="issue-severity severity-medium">MED</span>
+                            Deprecated function usage in legacy_handler.py
+                        </div>
+                        <div class="issue-item">
+                            <span class="issue-severity severity-low">LOW</span>
+                            Long parameter list in init_system()
+                        </div>
+                        <div class="issue-item">
+                            <span class="issue-severity severity-high">HIGH</span>
+                            SQL injection vulnerability in query builder
+                        </div>
+                        <div class="issue-item">
+                            <span class="issue-severity severity-medium">MED</span>
+                            Race condition in threading module
+                        </div>
+                        <div class="issue-item">
+                            <span class="issue-severity severity-low">LOW</span>
+                            Inconsistent naming conventions
+                        </div>
+                        <div class="issue-item">
+                            <span class="issue-severity severity-medium">MED</span>
+                            Large function should be split
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="panel" id="console-panel">
+                <div class="panel-title">💻 Console Output</div>
+                <div class="panel-content">
+                    <div class="console-output" id="console-content">
+                        <!-- Real-time console output will be populated here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal">
+        <div id="modal-content">
+            <button id="close-modal-button" class="close-button">X</button>
+            <div class="modal-header">
+                <label class="edit-toggle">
+                    <input type="checkbox" id="modal-edit-toggle"> Unlock Editing
+                </label>
+                <button id="modal-save-button" class="save-button" disabled>Save Changes</button>
+            </div>
+            <div style="flex: 1; overflow-y: auto;">
+                <pre><code id="code-snippet" contenteditable="false"></code></pre>
+            </div>
+            <div id="modal-gemini-form">
+                <input type="text" id="modal-gemini-prompt" placeholder="Ask Gemini about this code...">
+                <button id="modal-gemini-send">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="left-modal">
+        <div id="left-modal-handle"></div>
+        <div id="left-modal-content">
+            <button id="close-left-modal-button" class="close-button">X</button>
+            <div id="left-modal-title">Where is this function called?</div>
+            <div id="left-modal-callers"></div>
+        </div>
+    </div>
+
+    <div id="right-modal">
+        <div id="right-modal-handle"></div>
+        <div id="right-modal-content">
+            <button id="close-right-modal-button" class="close-button">X</button>
+            <div class="modal-header">
+                <label class="edit-toggle">
+                    <input type="checkbox" id="right-modal-edit-toggle"> Unlock Editing
+                </label>
+                <button id="right-modal-save-button" class="save-button" disabled>Save Changes</button>
+            </div>
+            <div id="right-modal-returns"></div>
+            <div id="right-modal-code-container" contenteditable="false"></div>
+            <div id="right-modal-gemini-form">
+                <input type="text" id="right-modal-gemini-prompt" placeholder="Ask Gemini about this script...">
+                <button id="right-modal-gemini-send">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="welcome-modal">
+        <div id="welcome-content">
+            <div id="welcome-title">Project Analysis</div>
+            <div id="welcome-analysis"></div>
+            <button id="close-welcome-button" class="navbar-button" style="margin-top: 20px;">Close</button>
+        </div>
+    </div>
+
+    <div id="settings-modal">
+        <div id="settings-content">
+            <div id="settings-title">Settings</div>
+            <div class="setting-item">
+                <label class="setting-label">Enable Gemini Analysis</label>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="gemini-enabled-toggle">
+                    <span class="slider"></span>
+                </label>
+                <div class="setting-description">Allow Gemini to analyze your codebase</div>
+            </div>
+            <div class="setting-item">
+                <label class="setting-label">Initialize Gemini on Startup</label>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="gemini-startup-toggle">
+                    <span class="slider"></span>
+                </label>
+                <div class="setting-description">Automatically start Gemini analysis when the app loads</div>
+            </div>
+            <div class="setting-item">
+                <label class="setting-label">Color Scheme</label>
+                <select id="theme-selector" class="theme-select">
+                    <option value="default">Default (Green/Dark)</option>
+                    <option value="light-blue">Light Blue</option>
+                    <option value="dark-blue">Dark Blue</option>
+                    <option value="high-contrast">High Contrast</option>
+                    <option value="custom">Custom Colors</option>
+                </select>
+                <div class="setting-description">Choose a color scheme for the interface</div>
+            </div>
+            <div class="setting-item" id="custom-colors-section" style="display: none;">
+                <label class="setting-label">Custom Colors</label>
+                <div class="color-picker-group">
+                    <div class="color-picker-item">
+                        <label class="color-label">Primary Color:</label>
+                        <input type="color" id="primary-color-picker" value="#00ff00">
+                    </div>
+                    <div class="color-picker-item">
+                        <label class="color-label">Secondary Color:</label>
+                        <input type="color" id="secondary-color-picker" value="#121212">
+                    </div>
+                </div>
+                <div class="setting-description">Choose your own primary and secondary colors</div>
+            </div>
+            <div class="setting-item">
+                <label class="setting-label">Auto-save after Gemini edit</label>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="auto-save-toggle">
+                    <span class="slider"></span>
+                </label>
+                <div class="setting-description">Automatically save code changes suggested by Gemini to disk</div>
+            </div>
+            <div class="setting-item">
+                <button id="initialize-gemini-btn" class="navbar-button" style="width: 100%;" disabled>
+                    <span id="initialize-btn-text">Initialize Gemini</span>
+                    <span id="initialize-btn-spinner" class="loading-spinner" style="display: none;"></span>
+                </button>
+                <div class="setting-description">Manually start Gemini analysis (requires Gemini to be enabled)</div>
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button id="close-settings-button" class="navbar-button" style="flex: 1;">Close</button>
+                <button id="save-settings-button" class="navbar-button" style="flex: 1;">Save Settings</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="warning-modal" class="warning-modal">
+        <div class="warning-content">
+            <div class="warning-title">⚠️ Warning</div>
+            <div class="warning-text">
+                Enabling Gemini will allow it to analyze your entire codebase. This may take some time and will send your code to Google's Gemini service for analysis.
+            </div>
+            <div class="warning-buttons">
+                <button class="warning-button cancel" onclick="cancelGeminiEnable()">Cancel</button>
+                <button class="warning-button confirm" onclick="confirmGeminiEnable()">Enable Gemini</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="fade-popup">
+        <div id="fade-popup-title">⚠️ Gemini Disabled</div>
+        <div id="fade-popup-text">You need to enable Gemini before you can initialize it.</div>
+        <button id="fade-popup-ok" onclick="closeFadePopup()">OK</button>
+    </div>
+
+    <div id="add-project-modal">
+        <div id="add-project-content">
+            <div id="add-project-title">Add New Project</div>
+            <div class="add-project-step">
+                <label class="add-project-label">Step 1: Enter Project Directory Path</label>
+                <input type="text" class="add-project-input" id="add-project-directory" placeholder="Enter the full path to your Python project folder (e.g., C:\MyProject or /home/user/myproject)">
+                <button class="add-project-button secondary" onclick="validateAddProjectDirectory()">
+                    <span id="validate-add-project-text">Validate Directory</span>
+                </button>
+                <div class="add-project-display" id="add-project-directory-display">
+                    <span class="add-project-placeholder">Enter a directory path above and click "Validate Directory"</span>
+                </div>
+            </div>
+            <div class="add-project-step">
+                <label class="add-project-label">Step 2: Name Your Project</label>
+                <input type="text" class="add-project-input" id="add-project-name" placeholder="Enter a name for your project (e.g., 'My Python Project')" maxlength="50">
+            </div>
+            <div class="add-project-step">
+                <button class="add-project-button" id="add-project-continue-btn" onclick="saveNewProject()" disabled>
+                    <span id="add-project-continue-text">Add Project</span>
+                    <span id="add-project-continue-spinner" class="loading-spinner" style="display: none;"></span>
+                </button>
+            </div>
+            <div id="add-project-message"></div>
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button id="close-add-project-button" class="navbar-button" style="flex: 1;">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="new-project-modal">
+        <div id="new-project-content">
+            <div id="new-project-title">Create New Project</div>
+            <div class="add-project-step">
+                <label class="add-project-label">Step 1: Select Parent Directory</label>
+                <input type="text" class="add-project-input" id="new-project-parent-directory" placeholder="Enter the parent directory where the new project folder will be created (e.g., C:\Projects or /home/user/projects)">
+                <button class="add-project-button secondary" onclick="validateNewProjectParentDirectory()">
+                    <span id="validate-new-project-text">Validate Directory</span>
+                </button>
+                <div class="add-project-display" id="new-project-parent-display">
+                    <span class="add-project-placeholder">Enter a parent directory path above and click "Validate Directory"</span>
+                </div>
+            </div>
+            <div class="add-project-step">
+                <label class="add-project-label">Step 2: Name Your Project</label>
+                <input type="text" class="add-project-input" id="new-project-name" placeholder="Enter a name for your project (e.g., 'MyPythonApp')" maxlength="50">
+                <div style="font-size: 12px; color: var(--text-color); opacity: 0.7; margin-top: 5px;">
+                    This will create a folder with this name and a blank main.py file inside
+                </div>
+            </div>
+            <div class="add-project-step">
+                <button class="add-project-button" id="new-project-continue-btn" onclick="createNewProject()" disabled>
+                    <span id="new-project-continue-text">Create Project</span>
+                    <span id="new-project-continue-spinner" class="loading-spinner" style="display: none;"></span>
+                </button>
+            </div>
+            <div id="new-project-message"></div>
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button id="close-new-project-button" class="navbar-button" style="flex: 1;">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="gemini-request-bar">
+        <input type="text" id="main-gemini-prompt" placeholder="Ask Gemini about the current script...">
+        <button id="main-gemini-send">Send</button>
+    </div>
+
+    <div id="gemini-response-modal">
+        <div id="gemini-response-content">
+            <button id="close-gemini-response-button" class="close-button">X</button>
+            <pre id="gemini-response-text"></pre>
+        </div>
+    </div>
+
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://unpkg.com/swiper/swiper-bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script>
+        let mainSwiper;
+        let fullData;
+        
+        // Declare variables used throughout the application
+        let consolePollingInterval;
+        let socket;
+        let settingsData = {
+            gemini_enabled: false,
+            gemini_initialize_on_startup: false,
+            gemini_initialized: false,
+            theme: 'default',
+            custom_primary: '#00ff00',
+            custom_secondary: '#121212',
+            auto_save_gemini: false
+        };
+
+        // Load initial analysis with polling
+        function loadInitialAnalysis() {
+            fetch('/initial-analysis')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.complete) {
+                        // Analysis is complete - stop polling
+                        if (data.analysis && data.analysis.includes('disabled')) {
+                            document.getElementById('analysis-status').textContent = 'Gemini disabled';
+                            document.getElementById('analysis-status').classList.remove('loading-dots');
+                        } else if (data.analysis) {
+                            document.getElementById('welcome-analysis').textContent = data.analysis;
+                            document.getElementById('welcome-modal').style.display = 'flex';
+                            document.getElementById('analysis-status').textContent = 'Analysis complete';
+                            document.getElementById('analysis-status').classList.remove('loading-dots');
+                        } else {
+                            // Complete but no analysis available
+                            document.getElementById('analysis-status').textContent = 'Analysis unavailable';
+                            document.getElementById('analysis-status').classList.remove('loading-dots');
+                        }
+                    } else {
+                        // Analysis still in progress, poll again in 2 seconds
+                        document.getElementById('analysis-status').textContent = 'Analyzing codebase...';
+                        document.getElementById('analysis-status').classList.add('loading-dots');
+                        setTimeout(loadInitialAnalysis, 2000);
+                    }
+                })
+                .catch(error => {
+                    console.log('No initial analysis available');
+                    document.getElementById('analysis-status').textContent = 'Analysis unavailable';
+                });
+        }
+        
+        // Initialize WebSocket connection
+        console.log('1. Starting WebSocket...');
+        initializeWebSocket();
+        
+        // Load theme settings immediately on page load
+        console.log('2. Loading theme settings...');
+        loadThemeSettings();
+        
+        // Start console output polling
+        console.log('3. Starting console polling...');
+        startConsolePolling();
+        
+        // Load settings and then decide whether to load initial analysis
+        fetch('/settings')
+            .then(response => response.json())
+            .then(data => {
+                settingsData = {...settingsData, ...data};
+                if (settingsData.gemini_enabled && settingsData.gemini_initialize_on_startup) {
+                    loadInitialAnalysis();
+                } else {
+                    document.getElementById('analysis-status').textContent = 'Gemini disabled';
+                }
+                // Load projects and setup project selector
+                loadProjects();
+            })
+            .catch(error => {
+                console.error('Error loading settings:', error);
+                document.getElementById('analysis-status').textContent = 'Error loading settings';
+                // Still load projects
+                loadProjects();
+            });
+
+        fetch('/data')
+            .then(response => response.json())
+            .then(data => {
+                fullData = data;
+                const files = data.nodes.filter(n => n.type === 'file');
+                const mainSwiperWrapper = document.querySelector('.swiper-container-main .swiper-wrapper');
+                const thumbsSwiperWrapper = document.querySelector('.swiper-container-thumbs .swiper-wrapper');
+
+                files.forEach((file, index) => {
+                    // Main slide
+                    const slide = document.createElement('div');
+                    slide.className = 'swiper-slide';
+                    slide.dataset.scriptName = file.name;
+                    const title = document.createElement('h3');
+                    title.textContent = file.name;
+                    const svgContainer = document.createElement('div');
+                    svgContainer.style.width = '100%';
+                    svgContainer.style.height = '100%';
+                    slide.appendChild(title);
+                    slide.appendChild(svgContainer);
+                    mainSwiperWrapper.appendChild(slide);
+                    createGraph(svgContainer, file, data);
+
+                    // File navigation button
+                    const navButton = document.createElement('button');
+                    navButton.className = 'file-nav-button';
+                    navButton.textContent = file.name;
+                    navButton.dataset.slideIndex = index;
+                    navButton.addEventListener('click', () => {
+                        mainSwiper.slideTo(index);
+                        updateActiveNavButton(index);
+                    });
+                    document.getElementById('file-navigation').appendChild(navButton);
+                });
+                
+                // Set first button as active
+                if (files.length > 0) {
+                    updateActiveNavButton(0);
+                }
+
+                // Initialize swiper based on script count
+                const scriptCount = files.length;
+                if (scriptCount === 1) {
+                    initializeSingleScriptSwiper();
+                } else {
+                    initializeMultiScriptSwiper();
+                }
+
+                // Apply dynamic carousel sizing based on number of scripts
+                updateCarouselSizing();
+            });
+
+        function createGraph(container, file, allData) {
+            const fileNodes = allData.nodes.filter(n => n.type !== 'file' && allData.edges.some(e => e.source === file.id && e.target === n.id));
+            const nodes = [
+                { ...file },
+                ...fileNodes.map(n => ({...n}))
+            ];
+            const links = allData.edges.filter(e => e.source === file.id);
+
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+            const svg = d3.select(container).append("svg")
+                .attr("width", width)
+                .attr("height", height)
+                .attr("viewBox", `0 0 ${width} ${height}`)
+                .call(d3.zoom().on("zoom", function (event) {
+                   g.attr("transform", event.transform)
+                }));
+
+            const g = svg.append("g");
+
+            const simulation = d3.forceSimulation(nodes)
+                .force("link", d3.forceLink(links).id(d => d.id).distance(80))
+                .force("charge", d3.forceManyBody().strength(-200))
+                .force("center", d3.forceCenter(width / 2, height / 2))
+                .force("collision", d3.forceCollide().radius(20));
+            
+            // Fix the file node (green node) at the center
+            const fileNode = nodes.find(n => n.type === 'file');
+            if (fileNode) {
+                fileNode.fx = width / 2;
+                fileNode.fy = height / 2;
+                fileNode.x = width / 2;
+                fileNode.y = height / 2;
+            }
+            
+            // For graphs with only a file node (no functions/classes), ensure perfect centering
+            if (nodes.length === 1 && fileNode) {
+                // Stop the simulation immediately for single nodes
+                simulation.stop();
+                fileNode.x = width / 2;
+                fileNode.y = height / 2;
+                fileNode.fx = width / 2;
+                fileNode.fy = height / 2;
+            }
+
+            const link = g.append("g")
+                .attr("class", "links")
+                .selectAll("line")
+                .data(links)
+                .enter().append("line")
+                .attr("class", "link");
+
+            const node = g.append("g")
+                .attr("class", "nodes")
+                .selectAll("g")
+                .data(nodes)
+                .enter().append("g")
+                .attr("class", "node")
+                .call(drag(simulation))
+                .on('click', (event, d) => {
+                    if (d.type === 'file') {
+                        const rightModal = document.getElementById('right-modal');
+                        document.getElementById('right-modal-code-container').textContent = d.code;
+                        document.getElementById('right-modal-returns').innerHTML = ''; // Clear returns for files
+                        rightModal.classList.add('open');
+                        rightModal.style.display = 'flex';
+                        
+                        // Store current file info for right modal editing
+                        window.currentRightModalFile = {
+                            path: d.file_path,
+                            name: d.name,
+                            type: d.type
+                        };
+                    } else if (d.type === 'function') {
+                        // Show function code in center modal
+                        const modal = document.getElementById('modal');
+                        document.getElementById('code-snippet').textContent = d.code;
+                        modal.style.display = 'flex';
+                        modal.classList.add('show');
+                        
+                        // Store current file info for editing
+                        window.currentMainModalFile = {
+                            path: d.file_path,
+                            name: d.name,
+                            type: d.type
+                        };
+                        
+                        // Show callers in left panel
+                        showFunctionCallers(d);
+                        
+                        // Show returns in right panel
+                        showFunctionReturns(d);
+                    } else {
+                        const modal = document.getElementById('modal');
+                        document.getElementById('code-snippet').textContent = d.code;
+                        modal.style.display = 'flex';
+                        modal.classList.add('show');
+                        
+                        // Store current file info for editing
+                        window.currentMainModalFile = {
+                            path: d.file_path,
+                            name: d.name,
+                            type: d.type
+                        };
+                    }
+                });
+
+            node.append("circle")
+                .attr("r", d => d.type === 'file' ? 15 : (d.type === 'class' ? 10 : 8))
+                .attr("fill", d => d.type === 'file' ? '#00ff00' : (d.type === 'class' ? '#0000ff' : '#ff0000'));
+
+            node.append("text")
+                .text(d => d.name)
+                .attr("dy", d => d.type === 'file' ? -25 : -15);
+
+            simulation.on("tick", () => {
+                link
+                    .attr("x1", d => d.source.x)
+                    .attr("y1", d => d.source.y)
+                    .attr("x2", d => d.target.x)
+                    .attr("y2", d => d.target.y);
+                node
+                    .attr("transform", d => `translate(${d.x},${d.y})`);
+            });
+        }
+        
+        function drag(simulation) {
+            function dragstarted(event, d) {
+                if (!event.active) simulation.alphaTarget(0.3).restart();
+                d.fx = d.x;
+                d.fy = d.y;
+            }
+            function dragged(event, d) {
+                d.fx = event.x;
+                d.fy = event.y;
+            }
+            function dragended(event, d) {
+                if (!event.active) simulation.alphaTarget(0);
+                d.fx = null;
+                d.fy = null;
+            }
+            return d3.drag()
+                .on("start", dragstarted)
+                .on("drag", dragged)
+                .on("end", dragended);
+        }
+
+        function showFunctionCallers(functionData) {
+            const leftModal = document.getElementById('left-modal');
+            const callersContainer = document.getElementById('left-modal-callers');
+            
+            if (functionData.called_by && functionData.called_by.length > 0) {
+                callersContainer.innerHTML = '';
+                functionData.called_by.forEach(callerId => {
+                    const callerItem = document.createElement('div');
+                    callerItem.className = 'caller-item';
+                    
+                    const [file, func] = callerId.split('::');
+                    callerItem.innerHTML = `
+                        <div class="caller-file">${file}</div>
+                        <div class="caller-function">${func}</div>
+                    `;
+                    
+                    callerItem.addEventListener('click', () => {
+                        // Find and show the caller function
+                        const callerNode = fullData.nodes.find(n => n.id === callerId);
+                        if (callerNode) {
+                            // Navigate to the script containing the caller function
+                            navigateToScriptAndHighlightFunction(callerNode);
+                        }
+                    });
+                    
+                    callersContainer.appendChild(callerItem);
+                });
+            } else {
+                callersContainer.innerHTML = '<div style="color: var(--text-color); font-style: italic;">No callers found for this function.</div>';
+            }
+            
+            leftModal.classList.add('open');
+            leftModal.style.display = 'flex';
+        }
+
+        function showFunctionReturns(functionData) {
+            const rightModal = document.getElementById('right-modal');
+            const returnsContainer = document.getElementById('right-modal-returns');
+            
+            if (functionData.returns && functionData.returns.length > 0) {
+                returnsContainer.innerHTML = `
+                    <div class="returns-list">
+                        <div class="returns-title">Returns:</div>
+                        ${functionData.returns.map(ret => `<div class="return-item">${ret}</div>`).join('')}
+                    </div>
+                `;
+            } else {
+                returnsContainer.innerHTML = `
+                    <div class="returns-list">
+                        <div class="returns-title">Returns:</div>
+                        <div class="return-item">No explicit returns found</div>
+                    </div>
+                `;
+            }
+            
+            // Show function code in the right modal for editing
+            document.getElementById('right-modal-code-container').textContent = functionData.code;
+            
+            // Store current file info for right modal editing
+            window.currentRightModalFile = {
+                path: functionData.file_path,
+                name: functionData.name,
+                type: functionData.type
+            };
+            
+            rightModal.classList.add('open');
+            rightModal.style.display = 'flex';
+        }
+
+        function navigateToScriptAndHighlightFunction(functionData) {
+            // Find the script that contains this function
+            const scriptNode = fullData.nodes.find(n => n.type === 'file' && n.name === functionData.file);
+            if (!scriptNode) return;
+
+            // Find the slide for this script
+            const slides = document.querySelectorAll('.swiper-slide');
+            let targetSlideIndex = -1;
+            
+            slides.forEach((slide, index) => {
+                if (slide.dataset.scriptName === functionData.file) {
+                    targetSlideIndex = index;
+                }
+            });
+
+            if (targetSlideIndex !== -1) {
+                // Navigate to the script slide
+                mainSwiper.slideTo(targetSlideIndex);
+                
+                // Wait for slide transition, then show the script with highlighted function
+                setTimeout(() => {
+                    showScriptWithHighlightedFunction(scriptNode, functionData);
+                }, 300);
+            }
+        }
+
+        function showScriptWithHighlightedFunction(scriptNode, functionData) {
+            const rightModal = document.getElementById('right-modal');
+            const codeContainer = document.getElementById('right-modal-code-container');
+            
+            // Get the full script content
+            let scriptContent = scriptNode.code;
+            
+            // Find the function in the script and highlight it
+            const functionName = functionData.name;
+            const functionRegex = new RegExp(`def\\s+${functionName}\\s*\\([^)]*\\):.*?(?=\\n\\s*def|\\n\\s*class|$)`, 'gs');
+            const match = scriptContent.match(functionRegex);
+            
+            if (match) {
+                const functionCode = match[0];
+                const functionStart = scriptContent.indexOf(functionCode);
+                const functionEnd = functionStart + functionCode.length;
+                
+                // Highlight the function by wrapping it in a special div
+                const highlightedScript = 
+                    scriptContent.substring(0, functionStart) +
+                    `<div style="background-color: rgba(0, 255, 0, 0.2); border: 2px solid #00ff00; border-radius: 5px; padding: 10px; margin: 10px 0;">` +
+                    functionCode +
+                    `</div>` +
+                    scriptContent.substring(functionEnd);
+                
+                codeContainer.innerHTML = `<pre style="white-space: pre-wrap; font-family: inherit; color: var(--text-color); margin: 0;">${highlightedScript}</pre>`;
+            } else {
+                codeContainer.innerHTML = `<pre style="white-space: pre-wrap; font-family: inherit; color: var(--text-color); margin: 0;">${scriptContent}</pre>`;
+            }
+            
+            // Show the right modal
+            rightModal.classList.add('open');
+            rightModal.style.display = 'flex';
+            
+            // Update the panels for the highlighted function
+            showFunctionCallers(functionData);
+            showFunctionReturns(functionData);
+        }
+
+        async function askGemini(user_prompt, script_code, target_code, full_project_context = false) {
+            const responseDiv = document.getElementById('gemini-response-text');
+            const responseModal = document.getElementById('gemini-response-modal');
+            responseDiv.textContent = 'Asking Gemini... please wait.';
+            responseModal.classList.add('show');
+            responseModal.style.display = 'flex';
+
+            try {
+                const request_body = {
+                    user_prompt: user_prompt,
+                    full_project_context: full_project_context
+                };
+                if (script_code) {
+                    request_body.script_code = script_code;
+                }
+                if (target_code) {
+                    request_body.target_code = target_code;
+                }
+
+                const response = await fetch('/ask-gemini', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(request_body)
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    responseDiv.textContent = result.response;
+                } else {
+                    responseDiv.textContent = 'Error: ' + result.error;
+                }
+            } catch (error) {
+                responseDiv.textContent = 'A network error occurred: ' + error;
+            }
+        }
+
+        document.getElementById('close-modal-button').addEventListener('click', () => {
+            const modal = document.getElementById('modal');
+            modal.classList.remove('show');
+            modal.addEventListener('transitionend', function handler() {
+                modal.style.display = 'none';
+                modal.removeEventListener('transitionend', handler);
+            });
+        });
+
+        const rightModal = document.getElementById('right-modal');
+        const rightModalHandle = document.getElementById('right-modal-handle');
+        const leftModal = document.getElementById('left-modal');
+        const leftModalHandle = document.getElementById('left-modal-handle');
+
+        rightModal.addEventListener('mouseleave', () => {
+            rightModal.classList.remove('open');
+        });
+
+        rightModalHandle.addEventListener('mouseenter', () => {
+            rightModal.classList.add('open');
+        });
+
+        leftModal.addEventListener('mouseleave', () => {
+            leftModal.classList.remove('open');
+        });
+
+        leftModalHandle.addEventListener('mouseenter', () => {
+            leftModal.classList.add('open');
+        });
+
+        // Ensure the handles are always visible and positioned correctly
+        rightModalHandle.style.display = 'block';
+        leftModalHandle.style.display = 'block';
+
+        document.getElementById('close-left-modal-button').addEventListener('click', () => {
+            const leftModal = document.getElementById('left-modal');
+            leftModal.classList.remove('open');
+            leftModal.addEventListener('transitionend', function handler() {
+                leftModal.style.display = 'none';
+                leftModal.removeEventListener('transitionend', handler);
+            });
+        });
+
+        document.getElementById('close-right-modal-button').addEventListener('click', () => {
+            const rightModal = document.getElementById('right-modal');
+            rightModal.classList.remove('open');
+            rightModal.addEventListener('transitionend', function handler() {
+                rightModal.style.display = 'none';
+                rightModal.removeEventListener('transitionend', handler);
+            });
+        });
+
+        document.getElementById('close-welcome-button').addEventListener('click', () => {
+            document.getElementById('welcome-modal').style.display = 'none';
+        });
+
+        // Settings modal event listeners
+        document.getElementById('close-settings-button').addEventListener('click', () => {
+            document.getElementById('settings-modal').style.display = 'none';
+        });
+
+        document.getElementById('save-settings-button').addEventListener('click', saveSettings);
+
+        document.getElementById('initialize-gemini-btn').addEventListener('click', initializeGemini);
+
+        // Add project modal event listeners
+        document.getElementById('close-add-project-button').addEventListener('click', () => {
+            document.getElementById('add-project-modal').style.display = 'none';
+        });
+
+        document.getElementById('add-project-name').addEventListener('input', updateAddProjectContinueButton);
+
+        // New project modal event listeners
+        document.getElementById('close-new-project-button').addEventListener('click', () => {
+            document.getElementById('new-project-modal').style.display = 'none';
+        });
+
+        document.getElementById('new-project-name').addEventListener('input', updateNewProjectContinueButton);
+
+        // Toggle switch event listeners for immediate feedback
+        document.getElementById('gemini-enabled-toggle').addEventListener('change', function() {
+            settingsData.gemini_enabled = this.checked;
+            updateInitializeButton();
+        });
+
+        document.getElementById('gemini-startup-toggle').addEventListener('change', function() {
+            settingsData.gemini_initialize_on_startup = this.checked;
+        });
+        
+        // Theme selector event listener
+        document.getElementById('theme-selector').addEventListener('change', function() {
+            const selectedTheme = this.value;
+            settingsData.theme = selectedTheme;
+            applyTheme(selectedTheme);
+            
+            // Show/hide custom color section
+            const customSection = document.getElementById('custom-colors-section');
+            if (selectedTheme === 'custom') {
+                customSection.style.display = 'block';
+            } else {
+                customSection.style.display = 'none';
+            }
+        });
+        
+        // Color picker event listeners
+        document.getElementById('primary-color-picker').addEventListener('change', function() {
+            settingsData.custom_primary = this.value;
+            if (settingsData.theme === 'custom') {
+                applyCustomColors();
+            }
+        });
+        
+        document.getElementById('secondary-color-picker').addEventListener('change', function() {
+            settingsData.custom_secondary = this.value;
+            if (settingsData.theme === 'custom') {
+                applyCustomColors();
+            }
+        });
+        
+        // Auto-save toggle event listener
+        document.getElementById('auto-save-toggle').addEventListener('change', function() {
+            settingsData.auto_save_gemini = this.checked;
+        });
+
+        document.getElementById('close-gemini-response-button').addEventListener('click', () => {
+            const responseModal = document.getElementById('gemini-response-modal');
+            responseModal.classList.remove('show');
+            responseModal.addEventListener('transitionend', function handler() {
+                responseModal.style.display = 'none';
+                responseModal.removeEventListener('transitionend', handler);
+            });
+        });
+
+        document.getElementById('main-gemini-send').addEventListener('click', () => {
+            const prompt = document.getElementById('main-gemini-prompt').value;
+            if (prompt) {
+                askGemini(prompt, null, null, true);
+            }
+        });
+
+        document.getElementById('modal-gemini-send').addEventListener('click', () => {
+            const prompt = document.getElementById('modal-gemini-prompt').value;
+            const targetCode = document.getElementById('code-snippet').textContent;
+            const activeSlide = document.querySelector('.swiper-slide-active');
+            const scriptName = activeSlide.dataset.scriptName;
+            const script = fullData.nodes.find(n => n.name === scriptName);
+            if (prompt && script && targetCode) {
+                askGemini(prompt, script.code, targetCode);
+            }
+        });
+
+        document.getElementById('right-modal-gemini-send').addEventListener('click', () => {
+            const prompt = document.getElementById('right-modal-gemini-prompt').value;
+            const scriptCode = document.getElementById('right-modal-code-container').textContent;
+            if (prompt && scriptCode) {
+                askGemini(prompt, scriptCode, null);
+            }
+        });
+
+        // Navbar button functions
+        function exportData() {
+            if (fullData) {
+                const dataStr = JSON.stringify(fullData, null, 2);
+                const dataBlob = new Blob([dataStr], {type: 'application/json'});
+                const url = URL.createObjectURL(dataBlob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = 'python_visualizer_data.json';
+                link.click();
+                URL.revokeObjectURL(url);
+            }
+        }
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        function refreshView() {
+            location.reload();
+        }
+
+        // Settings functionality
+
+        function openSettings() {
+            loadSettings();
+            document.getElementById('settings-modal').style.display = 'flex';
+            // Force update button colors after a short delay to ensure DOM is ready
+            setTimeout(() => {
+                updateInitializeButton();
+            }, 100);
+        }
+
+        function loadThemeSettings() {
+            fetch('/global-preferences')
+                .then(response => response.json())
+                .then(data => {
+                    // Apply theme immediately from global preferences
+                    const theme = data.theme || 'default';
+                    settingsData.theme = theme;
+                    settingsData.custom_primary = data.custom_primary || '#00ff00';
+                    settingsData.custom_secondary = data.custom_secondary || '#121212';
+                    applyTheme(theme);
+                    console.log('Global theme loaded:', theme);
+                })
+                .catch(error => {
+                    console.error('Error loading global theme settings:', error);
+                    // Apply default theme on error
+                    applyTheme('default');
+                });
+        }
+        
+        function loadSettings() {
+            fetch('/settings')
+                .then(response => response.json())
+                .then(data => {
+                    settingsData = {...settingsData, ...data};
+                    document.getElementById('gemini-enabled-toggle').checked = data.gemini_enabled || false;
+                    document.getElementById('gemini-startup-toggle').checked = data.gemini_initialize_on_startup || false;
+                    
+                    // Load theme settings for settings modal
+                    const theme = data.theme || 'default';
+                    document.getElementById('theme-selector').value = theme;
+                    
+                    // Load custom colors
+                    if (data.custom_primary) {
+                        document.getElementById('primary-color-picker').value = data.custom_primary;
+                    }
+                    if (data.custom_secondary) {
+                        document.getElementById('secondary-color-picker').value = data.custom_secondary;
+                    }
+                    
+                    // Load auto-save setting
+                    document.getElementById('auto-save-toggle').checked = data.auto_save_gemini || false;
+                    settingsData.auto_save_gemini = data.auto_save_gemini || false;
+                    
+                    // Show custom section if needed
+                    if (theme === 'custom') {
+                        document.getElementById('custom-colors-section').style.display = 'block';
+                    }
+                    
+                    updateInitializeButton();
+                })
+                .catch(error => {
+                    console.error('Error loading settings:', error);
+                });
+        }
+
+        function updateInitializeButton() {
+            const btn = document.getElementById('initialize-gemini-btn');
+            const text = document.getElementById('initialize-btn-text');
+            const spinner = document.getElementById('initialize-btn-spinner');
+            
+            if (settingsData.gemini_enabled) {
+                btn.disabled = false;
+                if (settingsData.gemini_initialized) {
+                    text.textContent = 'Gemini Initialized';
+                    btn.style.backgroundColor = '#00cc00'; // Green when initialized
+                    btn.style.color = 'white';
+                } else {
+                    text.textContent = 'Initialize Gemini';
+                    btn.style.backgroundColor = '#0066cc'; // Blue when enabled but not initialized
+                    btn.style.color = 'white';
+                }
+            } else {
+                btn.disabled = true;
+                text.textContent = 'Initialize Gemini';
+                btn.style.backgroundColor = '#cc0000'; // Red when disabled
+                btn.style.color = 'white';
+            }
+            spinner.style.display = 'none';
+        }
+
+        function saveSettings() {
+            const geminiEnabled = document.getElementById('gemini-enabled-toggle').checked;
+            const geminiStartup = document.getElementById('gemini-startup-toggle').checked;
+            
+            // If enabling Gemini for the first time, show warning
+            if (geminiEnabled && !settingsData.gemini_enabled) {
+                document.getElementById('warning-modal').style.display = 'flex';
+                return;
+            }
+            
+            updateSettings(geminiEnabled, geminiStartup);
+        }
+
+        function updateSettings(geminiEnabled, geminiStartup) {
+            fetch('/settings', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    gemini_enabled: geminiEnabled,
+                    gemini_initialize_on_startup: geminiStartup,
+                    theme: settingsData.theme,
+                    custom_primary: settingsData.custom_primary,
+                    custom_secondary: settingsData.custom_secondary,
+                    auto_save_gemini: settingsData.auto_save_gemini
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    settingsData.gemini_enabled = geminiEnabled;
+                    settingsData.gemini_initialize_on_startup = geminiStartup;
+                    updateInitializeButton();
+                    document.getElementById('settings-modal').style.display = 'none';
+                }
+            })
+            .catch(error => {
+                console.error('Error saving settings:', error);
+            });
+        }
+
+        function cancelGeminiEnable() {
+            document.getElementById('warning-modal').style.display = 'none';
+            document.getElementById('gemini-enabled-toggle').checked = false;
+        }
+
+        function confirmGeminiEnable() {
+            document.getElementById('warning-modal').style.display = 'none';
+            const geminiStartup = document.getElementById('gemini-startup-toggle').checked;
+            updateSettings(true, geminiStartup);
+        }
+
+        function initializeGemini() {
+            // Check if Gemini is enabled before proceeding
+            if (!settingsData.gemini_enabled) {
+                showFadePopup();
+                return;
+            }
+
+            const btn = document.getElementById('initialize-gemini-btn');
+            const text = document.getElementById('initialize-btn-text');
+            const spinner = document.getElementById('initialize-btn-spinner');
+            
+            btn.disabled = true;
+            text.textContent = 'Initializing...';
+            spinner.style.display = 'inline-block';
+            
+            fetch('/initialize-gemini', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    settingsData.gemini_initialized = true;
+                    updateInitializeButton();
+                    // Reload initial analysis
+                    loadInitialAnalysis();
+                } else {
+                    alert('Error: ' + data.error);
+                    updateInitializeButton();
+                }
+            })
+            .catch(error => {
+                console.error('Error initializing Gemini:', error);
+                updateInitializeButton();
+            });
+        }
+
+        function showFadePopup() {
+            const popup = document.getElementById('fade-popup');
+            popup.classList.add('show');
+            
+            // Auto-hide after 3 seconds
+            setTimeout(() => {
+                closeFadePopup();
+            }, 3000);
+        }
+
+        function closeFadePopup() {
+            const popup = document.getElementById('fade-popup');
+            popup.classList.remove('show');
+        }
+        
+        // Theme management functions
+        function applyTheme(themeName) {
+            document.documentElement.setAttribute('data-theme', themeName);
+            
+            if (themeName === 'custom') {
+                applyCustomColors();
+            }
+        }
+        
+        function applyCustomColors() {
+            const primary = settingsData.custom_primary;
+            const secondary = settingsData.custom_secondary;
+            
+            // Apply only primary and secondary colors
+            document.documentElement.style.setProperty('--custom-primary', primary);
+            document.documentElement.style.setProperty('--custom-secondary', secondary);
+        }
+        
+        // Removed complex color manipulation - using only primary and secondary colors
+        
+        // Console output management
+        
+        function initializeWebSocket() {
+            try {
+                socket = io();
+                
+                socket.on('console_update', function(logEntry) {
+                    addConsoleMessageFromServer(logEntry);
+                });
+                
+                socket.on('file_changed', function(data) {
+                    handleFileChange(data);
+                });
+                
+                socket.on('connect', function() {
+                    addConsoleMessage('Connected to server', 'SUCCESS');
+                });
+                
+                socket.on('disconnect', function() {
+                    addConsoleMessage('Disconnected from server', 'ERROR');
+                });
+            } catch (error) {
+                console.error('Failed to initialize WebSocket:', error);
+                addConsoleMessage('WebSocket unavailable - using polling mode', 'WARNING');
+            }
+        }
+        
+        function startConsolePolling() {
+            loadConsoleOutput(); // Load immediately
+            consolePollingInterval = setInterval(loadConsoleOutput, 2000); // Poll every 2 seconds
+        }
+        
+        function stopConsolePolling() {
+            if (consolePollingInterval) {
+                clearInterval(consolePollingInterval);
+            }
+        }
+        
+        function loadConsoleOutput() {
+            fetch('/console-output')
+                .then(response => response.json())
+                .then(data => {
+                    updateConsoleDisplay(data.logs);
+                })
+                .catch(error => {
+                    console.error('Error loading console output:', error);
+                });
+        }
+        
+        function updateConsoleDisplay(logs) {
+            const consoleContent = document.getElementById('console-content');
+            const shouldScrollToBottom = consoleContent.scrollTop + consoleContent.clientHeight >= consoleContent.scrollHeight - 5;
+            
+            // Clear existing content
+            consoleContent.innerHTML = '';
+            
+            // Add each log entry
+            logs.forEach(log => {
+                const logLine = document.createElement('div');
+                logLine.className = `console-line ${log.level.toLowerCase()}`;
+                logLine.textContent = `[${log.timestamp}] [${log.level}] ${log.message}`;
+                consoleContent.appendChild(logLine);
+            });
+            
+            // Auto-scroll to bottom if user was already at bottom
+            if (shouldScrollToBottom) {
+                consoleContent.scrollTop = consoleContent.scrollHeight;
+            }
+        }
+        
+        function addConsoleMessage(message, level = 'INFO') {
+            const timestamp = new Date().toLocaleTimeString('en-US', {hour12: false});
+            const consoleContent = document.getElementById('console-content');
+            const shouldScrollToBottom = consoleContent.scrollTop + consoleContent.clientHeight >= consoleContent.scrollHeight - 5;
+            
+            const logLine = document.createElement('div');
+            logLine.className = `console-line ${level.toLowerCase()}`;
+            logLine.textContent = `[${timestamp}] [${level}] ${message}`;
+            consoleContent.appendChild(logLine);
+            
+            // Auto-scroll to bottom if user was already at bottom
+            if (shouldScrollToBottom) {
+                consoleContent.scrollTop = consoleContent.scrollHeight;
+            }
+        }
+        
+        function addConsoleMessageFromServer(logEntry) {
+            const consoleContent = document.getElementById('console-content');
+            const shouldScrollToBottom = consoleContent.scrollTop + consoleContent.clientHeight >= consoleContent.scrollHeight - 5;
+            
+            const logLine = document.createElement('div');
+            logLine.className = `console-line ${logEntry.level.toLowerCase()}`;
+            logLine.textContent = `[${logEntry.timestamp}] [${logEntry.level}] ${logEntry.message}`;
+            consoleContent.appendChild(logLine);
+            
+            // Auto-scroll to bottom if user was already at bottom
+            if (shouldScrollToBottom) {
+                consoleContent.scrollTop = consoleContent.scrollHeight;
+            }
+        }
+        
+        function handleFileChange(data) {
+            addConsoleMessage(`File ${data.type}: ${data.filename}`, 'INFO');
+            
+            // Update the data and refresh the specific file's visualization
+            fullData = data.data;
+            
+            // Find and update the specific slide
+            const slides = document.querySelectorAll('.swiper-slide');
+            slides.forEach((slide, index) => {
+                if (slide.dataset.scriptName === data.filename) {
+                    // Add visual indicator for change
+                    slide.style.boxShadow = '0 0 20px var(--primary-color)';
+                    setTimeout(() => {
+                        slide.style.boxShadow = '';
+                    }, 3000);
+                    
+                    // Re-create the graph for this slide
+                    const svgContainer = slide.querySelector('div:last-child');
+                    svgContainer.innerHTML = ''; // Clear existing graph
+                    const fileNode = fullData.nodes.find(n => n.name === data.filename && n.type === 'file');
+                    if (fileNode) {
+                        createGraph(svgContainer, fileNode, fullData);
+                    }
+                }
+            });
+            
+            addConsoleMessage('Visualization updated', 'SUCCESS');
+        }
+
+        // Project Management Functions
+        function loadProjects() {
+            console.log('Loading projects...');
+            fetch('/workspaces')
+                .then(response => {
+                    console.log('Workspaces response:', response);
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Workspaces data:', data);
+                    const projectSelect = document.getElementById('project-select');
+                    const removeBtn = document.getElementById('remove-project-btn');
+                    projectSelect.innerHTML = '';
+                    
+                    if (!data.workspaces || Object.keys(data.workspaces).length === 0) {
+                        projectSelect.innerHTML = '<option value="">No projects available</option>';
+                        removeBtn.style.display = 'none';
+                        return;
+                    }
+                    
+                    // Add projects to selector
+                    Object.entries(data.workspaces).forEach(([id, workspace]) => {
+                        const option = document.createElement('option');
+                        option.value = id;
+                        option.textContent = workspace.name;
+                        if (id === data.current_workspace) {
+                            option.selected = true;
+                        }
+                        projectSelect.appendChild(option);
+                    });
+                    
+                    // Show/hide remove button based on current project
+                    const currentWorkspace = data.current_workspace;
+                    if (currentWorkspace === 'workspace_1' || Object.keys(data.workspaces).length <= 1) {
+                        removeBtn.style.display = 'none';
+                    } else {
+                        removeBtn.style.display = 'inline-block';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading projects:', error);
+                    console.error('Error stack:', error.stack);
+                    const projectSelect = document.getElementById('project-select');
+                    projectSelect.innerHTML = '<option value="">Error loading projects</option>';
+                    document.getElementById('remove-project-btn').style.display = 'none';
+                });
+        }
+
+        function switchProject() {
+            const projectSelect = document.getElementById('project-select');
+            const selectedProjectId = projectSelect.value;
+            
+            if (!selectedProjectId) return;
+            
+            fetch('/switch-workspace', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    workspace_id: selectedProjectId
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Reload the page to show new project data
+                    window.location.reload();
+                } else {
+                    alert('Error switching project: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error switching project:', error);
+                alert('Error switching project');
+            });
+        }
+        
+        function removeCurrentProject() {
+            const projectSelect = document.getElementById('project-select');
+            const currentProjectId = projectSelect.value;
+            
+            if (!currentProjectId) {
+                alert('No project selected');
+                return;
+            }
+            
+            if (currentProjectId === 'workspace_1') {
+                alert('Cannot remove the primary workspace');
+                return;
+            }
+            
+            const projectName = projectSelect.options[projectSelect.selectedIndex].text;
+            
+            if (!confirm(`Are you sure you want to remove the project "${projectName}"?\n\nThis will remove it from the project list but will not delete any files.`)) {
+                return;
+            }
+            
+            fetch('/remove-workspace', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    workspace_id: currentProjectId
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Project removed successfully: ' + data.message);
+                    // Reload the page to show updated project list
+                    window.location.reload();
+                } else {
+                    alert('Error removing project: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error removing project:', error);
+                alert('Error removing project');
+            });
+        }
+
+        // Update active navigation button
+        function updateActiveNavButton(activeIndex) {
+            const navButtons = document.querySelectorAll('.file-nav-button');
+            navButtons.forEach((button, index) => {
+                if (index === activeIndex) {
+                    button.classList.add('active');
+                } else {
+                    button.classList.remove('active');
+                }
+            });
+        }
+        
+        // Dynamic carousel sizing based on number of scripts
+        function updateCarouselSizing() {
+            const mainSwiperContainer = document.querySelector('.swiper-container-main');
+            const scriptCount = fullData ? fullData.nodes.filter(n => n.type === 'file').length : 0;
+            
+            // Remove existing size classes
+            mainSwiperContainer.classList.remove('single-script', 'two-scripts');
+            
+            // Add appropriate size class and handle swiper effects
+            if (scriptCount === 1) {
+                mainSwiperContainer.classList.add('single-script');
+                // Disable coverflow effect for single script
+                if (mainSwiper) {
+                    mainSwiper.destroy();
+                    initializeSingleScriptSwiper();
+                }
+            } else if (scriptCount === 2) {
+                mainSwiperContainer.classList.add('two-scripts');
+                // Re-enable coverflow for multiple scripts if needed
+                if (mainSwiper && !mainSwiper.params.effect) {
+                    mainSwiper.destroy();
+                    initializeMultiScriptSwiper();
+                }
+            } else {
+                // Re-enable coverflow for multiple scripts if needed
+                if (mainSwiper && !mainSwiper.params.effect) {
+                    mainSwiper.destroy();
+                    initializeMultiScriptSwiper();
+                }
+            }
+        }
+        
+        function initializeSingleScriptSwiper() {
+            mainSwiper = new Swiper('.swiper-container-main', {
+                slidesPerView: 'auto', // Allow custom slide width
+                centeredSlides: true,
+                grabCursor: false, // Disable grabbing for single slide
+                allowTouchMove: false, // Disable swiping for single slide
+                spaceBetween: 0,
+                on: {
+                    slideChange: function () {
+                        updateActiveNavButton(this.realIndex);
+                    }
+                }
+            });
+        }
+        
+        function initializeMultiScriptSwiper() {
+            mainSwiper = new Swiper('.swiper-container-main', {
+                effect: 'coverflow',
+                grabCursor: true,
+                centeredSlides: true,
+                slidesPerView: 'auto',
+                coverflowEffect: {
+                    rotate: 50,
+                    stretch: 0,
+                    depth: 100,
+                    modifier: 1,
+                    slideShadows: true,
+                },
+                loop: true,
+                navigation: {
+                    nextEl: '.swiper-button-next',
+                    prevEl: '.swiper-button-prev',
+                },
+                on: {
+                    slideChange: function () {
+                        updateActiveNavButton(this.realIndex);
+                    }
+                }
+            });
+        }
+
+        // Add Project Functions
+        let addProjectDirectory = '';
+        let addProjectName = '';
+
+        function openAddProject() {
+            document.getElementById('add-project-modal').style.display = 'flex';
+            // Reset form
+            document.getElementById('add-project-directory').value = '';
+            document.getElementById('add-project-name').value = '';
+            document.getElementById('add-project-directory-display').innerHTML = '<span class="add-project-placeholder">Enter a directory path above and click "Validate Directory"</span>';
+            document.getElementById('add-project-message').innerHTML = '';
+            document.getElementById('add-project-continue-btn').disabled = true;
+            addProjectDirectory = '';
+            addProjectName = '';
+        }
+
+        function validateAddProjectDirectory() {
+            const validateText = document.getElementById('validate-add-project-text');
+            const messageDiv = document.getElementById('add-project-message');
+            const directoryPath = document.getElementById('add-project-directory').value.trim();
+            
+            if (!directoryPath) {
+                messageDiv.innerHTML = `<div style="color: var(--primary-color); margin-top: 10px; font-size: 14px;">Please enter a directory path</div>`;
+                return;
+            }
+            
+            validateText.textContent = 'Validating...';
+            messageDiv.innerHTML = '';
+            
+            fetch('/validate-directory', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    directory_path: directoryPath
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    addProjectDirectory = directoryPath;
+                    document.getElementById('add-project-directory-display').innerHTML = `
+                        <span style="color: var(--primary-green);">✓</span> 
+                        <span style="margin-left: 10px;">${directoryPath}</span>
+                    `;
+                    validateText.textContent = 'Change Directory';
+                    updateAddProjectContinueButton();
+                } else {
+                    messageDiv.innerHTML = `<div style="color: var(--primary-color); margin-top: 10px; font-size: 14px;">Error: ${data.error}</div>`;
+                    validateText.textContent = 'Validate Directory';
+                }
+            })
+            .catch(error => {
+                messageDiv.innerHTML = `<div style="color: var(--primary-color); margin-top: 10px; font-size: 14px;">Error: ${error.message}</div>`;
+                validateText.textContent = 'Validate Directory';
+            });
+        }
+
+        function updateAddProjectContinueButton() {
+            const continueBtn = document.getElementById('add-project-continue-btn');
+            const projectNameInput = document.getElementById('add-project-name');
+            
+            addProjectName = projectNameInput.value.trim();
+            
+            if (addProjectDirectory && addProjectName) {
+                continueBtn.disabled = false;
+            } else {
+                continueBtn.disabled = true;
+            }
+        }
+
+        function saveNewProject() {
+            const continueText = document.getElementById('add-project-continue-text');
+            const continueSpinner = document.getElementById('add-project-continue-spinner');
+            const messageDiv = document.getElementById('add-project-message');
+            
+            continueText.textContent = 'Adding Project...';
+            continueSpinner.style.display = 'inline-block';
+            messageDiv.innerHTML = '';
+            
+            fetch('/save-workspace', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    workspace_name: addProjectName,
+                    directory_path: addProjectDirectory
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    messageDiv.innerHTML = `<div style="color: var(--primary-green); margin-top: 10px; font-size: 14px;">✓ ${data.message}</div>`;
+                    continueText.textContent = 'Project Added!';
+                    
+                    // Reload projects list and close modal after a short delay
+                    setTimeout(() => {
+                        loadProjects();
+                        document.getElementById('add-project-modal').style.display = 'none';
+                        // Reload the page to show new project data
+                        window.location.reload();
+                    }, 1500);
+                } else {
+                    messageDiv.innerHTML = `<div style="color: var(--primary-color); margin-top: 10px; font-size: 14px;">Error: ${data.error}</div>`;
+                    continueText.textContent = 'Add Project';
+                }
+            })
+            .catch(error => {
+                messageDiv.innerHTML = `<div style="color: var(--primary-color); margin-top: 10px; font-size: 14px;">Error: ${error.message}</div>`;
+                continueText.textContent = 'Add Project';
+            })
+            .finally(() => {
+                continueSpinner.style.display = 'none';
+            });
+        }
+
+        // New Project Functions
+        let newProjectParentDirectory = '';
+        let newProjectName = '';
+
+        function openNewProject() {
+            document.getElementById('new-project-modal').style.display = 'flex';
+            // Reset form
+            document.getElementById('new-project-parent-directory').value = '';
+            document.getElementById('new-project-name').value = '';
+            document.getElementById('new-project-parent-display').innerHTML = '<span class="add-project-placeholder">Enter a parent directory path above and click "Validate Directory"</span>';
+            document.getElementById('new-project-message').innerHTML = '';
+            document.getElementById('new-project-continue-btn').disabled = true;
+            newProjectParentDirectory = '';
+            newProjectName = '';
+        }
+
+        function validateNewProjectParentDirectory() {
+            const validateText = document.getElementById('validate-new-project-text');
+            const messageDiv = document.getElementById('new-project-message');
+            const parentDirectoryPath = document.getElementById('new-project-parent-directory').value.trim();
+            
+            if (!parentDirectoryPath) {
+                messageDiv.innerHTML = `<div style="color: var(--primary-color); margin-top: 10px; font-size: 14px;">Please enter a parent directory path</div>`;
+                return;
+            }
+            
+            validateText.textContent = 'Validating...';
+            messageDiv.innerHTML = '';
+            
+            fetch('/validate-parent-directory', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    directory_path: parentDirectoryPath
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    newProjectParentDirectory = parentDirectoryPath;
+                    document.getElementById('new-project-parent-display').innerHTML = `
+                        <span style="color: var(--primary-green);">✓</span> 
+                        <span style="margin-left: 10px;">${parentDirectoryPath}</span>
+                    `;
+                    validateText.textContent = 'Change Directory';
+                    updateNewProjectContinueButton();
+                } else {
+                    messageDiv.innerHTML = `<div style="color: var(--primary-color); margin-top: 10px; font-size: 14px;">Error: ${data.error}</div>`;
+                    validateText.textContent = 'Validate Directory';
+                }
+            })
+            .catch(error => {
+                messageDiv.innerHTML = `<div style="color: var(--primary-color); margin-top: 10px; font-size: 14px;">Error: ${error.message}</div>`;
+                validateText.textContent = 'Validate Directory';
+            });
+        }
+
+        function updateNewProjectContinueButton() {
+            const continueBtn = document.getElementById('new-project-continue-btn');
+            const projectNameInput = document.getElementById('new-project-name');
+            
+            newProjectName = projectNameInput.value.trim();
+            
+            if (newProjectParentDirectory && newProjectName) {
+                continueBtn.disabled = false;
+            } else {
+                continueBtn.disabled = true;
+            }
+        }
+
+        function createNewProject() {
+            const continueText = document.getElementById('new-project-continue-text');
+            const continueSpinner = document.getElementById('new-project-continue-spinner');
+            const messageDiv = document.getElementById('new-project-message');
+            
+            continueText.textContent = 'Creating Project...';
+            continueSpinner.style.display = 'inline-block';
+            messageDiv.innerHTML = '';
+            
+            fetch('/create-new-project', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    parent_directory: newProjectParentDirectory,
+                    project_name: newProjectName
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    messageDiv.innerHTML = `<div style="color: var(--primary-green); margin-top: 10px; font-size: 14px;">✓ ${data.message}</div>`;
+                    continueText.textContent = 'Project Created!';
+                    
+                    // Reload projects list and close modal after a short delay
+                    setTimeout(() => {
+                        loadProjects();
+                        document.getElementById('new-project-modal').style.display = 'none';
+                        // Reload the page to show new project data
+                        window.location.reload();
+                    }, 1500);
+                } else {
+                    messageDiv.innerHTML = `<div style="color: var(--primary-color); margin-top: 10px; font-size: 14px;">Error: ${data.error}</div>`;
+                    continueText.textContent = 'Create Project';
+                }
+            })
+            .catch(error => {
+                messageDiv.innerHTML = `<div style="color: var(--primary-color); margin-top: 10px; font-size: 14px;">Error: ${error.message}</div>`;
+                continueText.textContent = 'Create Project';
+            })
+            .finally(() => {
+                continueSpinner.style.display = 'none';
+            });
+        }
+
+        // Editable Code Panel Functions
+        function initializeEditablePanels() {
+            // Main modal edit functionality
+            const modalEditToggle = document.getElementById('modal-edit-toggle');
+            const modalSaveButton = document.getElementById('modal-save-button');
+            const codeSnippet = document.getElementById('code-snippet');
+            
+            modalEditToggle.addEventListener('change', function() {
+                const isEditable = this.checked;
+                codeSnippet.contentEditable = isEditable;
+                modalSaveButton.disabled = !isEditable;
+                
+                if (isEditable) {
+                    codeSnippet.style.border = '2px solid var(--primary-color)';
+                    codeSnippet.style.backgroundColor = 'rgba(0, 255, 0, 0.05)';
+                } else {
+                    codeSnippet.style.border = '';
+                    codeSnippet.style.backgroundColor = '';
+                }
+            });
+            
+            modalSaveButton.addEventListener('click', function() {
+                saveCodeChanges('main', codeSnippet.textContent);
+            });
+            
+            // Right modal edit functionality
+            const rightModalEditToggle = document.getElementById('right-modal-edit-toggle');
+            const rightModalSaveButton = document.getElementById('right-modal-save-button');
+            const rightModalCodeContainer = document.getElementById('right-modal-code-container');
+            
+            rightModalEditToggle.addEventListener('change', function() {
+                const isEditable = this.checked;
+                rightModalCodeContainer.contentEditable = isEditable;
+                rightModalSaveButton.disabled = !isEditable;
+                
+                if (isEditable) {
+                    rightModalCodeContainer.style.border = '2px solid var(--primary-color)';
+                    rightModalCodeContainer.style.backgroundColor = 'rgba(0, 255, 0, 0.05)';
+                } else {
+                    rightModalCodeContainer.style.border = '';
+                    rightModalCodeContainer.style.backgroundColor = '';
+                }
+            });
+            
+            rightModalSaveButton.addEventListener('click', function() {
+                saveCodeChanges('right', rightModalCodeContainer.textContent);
+            });
+        }
+        
+        function saveCodeChanges(modalType, codeContent) {
+            const saveButton = modalType === 'main' 
+                ? document.getElementById('modal-save-button')
+                : document.getElementById('right-modal-save-button');
+            
+            const originalText = saveButton.textContent;
+            saveButton.textContent = 'Saving...';
+            saveButton.disabled = true;
+            
+            // Get current file info from the modal
+            const currentFile = modalType === 'main' 
+                ? getCurrentMainModalFile()
+                : getCurrentRightModalFile();
+            
+            if (!currentFile) {
+                alert('Error: No file selected for editing');
+                saveButton.textContent = originalText;
+                saveButton.disabled = false;
+                return;
+            }
+            
+            fetch('/save-code', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    file_path: currentFile.path,
+                    content: codeContent,
+                    modal_type: modalType
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    saveButton.textContent = '✓ Saved';
+                    setTimeout(() => {
+                        saveButton.textContent = originalText;
+                        saveButton.disabled = false;
+                    }, 2000);
+                    
+                    // Check if auto-save is enabled and perform Gemini analysis
+                    if (window.globalPreferences && window.globalPreferences.autoSaveAfterEdit) {
+                        console.log('Auto-save enabled, triggering Gemini analysis...');
+                        // Trigger re-analysis of the file
+                        setTimeout(() => {
+                            // This will trigger the file watcher which will emit file_changed event
+                        }, 500);
+                    }
+                } else {
+                    alert('Error saving file: ' + data.error);
+                    saveButton.textContent = originalText;
+                    saveButton.disabled = false;
+                }
+            })
+            .catch(error => {
+                alert('Error saving file: ' + error.message);
+                saveButton.textContent = originalText;
+                saveButton.disabled = false;
+            });
+        }
+        
+        function getCurrentMainModalFile() {
+            // Get the currently displayed file in the main modal
+            return window.currentMainModalFile || null;
+        }
+        
+        function getCurrentRightModalFile() {
+            // Get the currently displayed file in the right modal
+            return window.currentRightModalFile || null;
+        }
+        
+        // Initialize editable panels when document is ready
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeEditablePanels();
+        });
+
+    </script>
+</body>
+</html>

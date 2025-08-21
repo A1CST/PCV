@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nothing But Vibes - First Run Setup</title>
+    <style>
+        :root {
+            --primary-green: #00ff00;
+            --dark-gray: #121212;
+            --medium-gray: #1e1e1e;
+            --light-gray: #e0e0e0;
+            --modal-bg: #2a2a2a;
+            --border-color: #555;
+            --text-color: #ddd;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: var(--dark-gray);
+            color: var(--light-gray);
+            font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .setup-container {
+            background-color: var(--modal-bg);
+            padding: 40px;
+            border-radius: 15px;
+            border: 2px solid var(--primary-green);
+            box-shadow: 0 10px 30px rgba(0, 255, 0, 0.3);
+            max-width: 600px;
+            width: 90%;
+            text-align: center;
+        }
+
+        .setup-title {
+            color: var(--primary-green);
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .setup-subtitle {
+            color: var(--text-color);
+            font-size: 16px;
+            margin-bottom: 30px;
+            opacity: 0.8;
+        }
+
+        .setup-step {
+            margin-bottom: 25px;
+            text-align: left;
+        }
+
+        .step-label {
+            color: var(--primary-green);
+            font-weight: bold;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .directory-display {
+            background-color: var(--dark-gray);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            margin-bottom: 15px;
+            word-break: break-all;
+            min-height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .directory-placeholder {
+            color: var(--text-color);
+            opacity: 0.5;
+            font-style: italic;
+        }
+
+        .workspace-input {
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background-color: var(--dark-gray);
+            color: var(--text-color);
+            font-family: inherit;
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+
+        .workspace-input:focus {
+            outline: none;
+            border-color: var(--primary-green);
+            box-shadow: 0 0 5px rgba(0, 255, 0, 0.5);
+        }
+
+        .setup-button {
+            background-color: var(--primary-green);
+            color: var(--dark-gray);
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            margin: 5px;
+            transition: all 0.2s ease;
+        }
+
+        .setup-button:hover {
+            background-color: #00cc00;
+            box-shadow: 0 2px 8px rgba(0, 255, 0, 0.3);
+        }
+
+        .setup-button:disabled {
+            background-color: var(--border-color);
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        .setup-button.secondary {
+            background-color: var(--dark-gray);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+        }
+
+        .setup-button.secondary:hover {
+            background-color: var(--medium-gray);
+            box-shadow: none;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(0, 255, 0, 0.3);
+            border-radius: 50%;
+            border-top-color: var(--primary-green);
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            color: #ff6b6b;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+
+        .success-message {
+            color: var(--primary-green);
+            margin-top: 10px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="setup-container">
+        <div class="setup-title">🚀 Welcome to Python Code Visualizer</div>
+        <div class="setup-subtitle">Let's set up your first workspace</div>
+        
+                <div class="setup-step">
+            <label class="step-label">Step 1: Enter Project Directory Path</label>
+            <input type="text" class="workspace-input" id="directory-path" placeholder="Enter the full path to your Python project folder (e.g., C:\MyProject or /home/user/myproject)" style="margin-bottom: 10px;">
+            <button class="setup-button secondary" onclick="validateDirectory()">
+                <span id="validate-text">Validate Directory</span>
+            </button>
+            <div class="directory-display" id="directory-display" style="margin-top: 15px;">
+                <span class="directory-placeholder">Enter a directory path above and click "Validate Directory"</span>
+            </div>
+        </div>
+        
+        <div class="setup-step">
+            <label class="step-label">Step 2: Name Your Workspace</label>
+            <input type="text" class="workspace-input" id="workspace-name" placeholder="Enter a name for your workspace (e.g., 'My Python Project')" maxlength="50">
+        </div>
+        
+        <div class="setup-step">
+            <button class="setup-button" id="continue-btn" onclick="saveWorkspace()" disabled>
+                <span id="continue-text">Continue to Visualizer</span>
+                <span id="continue-spinner" class="loading-spinner" style="display: none;"></span>
+            </button>
+        </div>
+        
+        <div id="message"></div>
+    </div>
+
+    <script>
+        let selectedDirectory = '';
+        let workspaceName = '';
+
+        function validateDirectory() {
+            const validateText = document.getElementById('validate-text');
+            const messageDiv = document.getElementById('message');
+            const directoryPath = document.getElementById('directory-path').value.trim();
+            
+            if (!directoryPath) {
+                messageDiv.innerHTML = `<div class="error-message">Please enter a directory path</div>`;
+                return;
+            }
+            
+            validateText.textContent = 'Validating...';
+            messageDiv.innerHTML = '';
+            
+            fetch('/validate-directory', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    directory_path: directoryPath
+                })
+            })
+            .then(response => {
+                console.log('Response status:', response.status);
+                console.log('Response headers:', response.headers);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.text().then(text => {
+                    console.log('Response text:', text);
+                    try {
+                        return JSON.parse(text);
+                    } catch (e) {
+                        console.error('Failed to parse JSON:', e);
+                        throw new Error(`Invalid JSON response: ${text}`);
+                    }
+                });
+            })
+            .then(data => {
+                console.log('Parsed data:', data);
+                if (data.success) {
+                    selectedDirectory = directoryPath;
+                    document.getElementById('directory-display').innerHTML = `
+                        <span style="color: var(--primary-green);">✓</span> 
+                        <span style="margin-left: 10px;">${directoryPath}</span>
+                    `;
+                    validateText.textContent = 'Change Directory';
+                    updateContinueButton();
+                } else {
+                    messageDiv.innerHTML = `<div class="error-message">Error: ${data.error}</div>`;
+                    validateText.textContent = 'Validate Directory';
+                }
+            })
+            .catch(error => {
+                console.error('Fetch error:', error);
+                messageDiv.innerHTML = `<div class="error-message">Error: ${error.message}</div>`;
+                validateText.textContent = 'Validate Directory';
+            });
+        }
+
+        function updateContinueButton() {
+            const continueBtn = document.getElementById('continue-btn');
+            const workspaceNameInput = document.getElementById('workspace-name');
+            
+            workspaceName = workspaceNameInput.value.trim();
+            
+            if (selectedDirectory && workspaceName) {
+                continueBtn.disabled = false;
+            } else {
+                continueBtn.disabled = true;
+            }
+        }
+
+        function saveWorkspace() {
+            const continueText = document.getElementById('continue-text');
+            const continueSpinner = document.getElementById('continue-spinner');
+            const messageDiv = document.getElementById('message');
+            
+            continueText.textContent = 'Setting up...';
+            continueSpinner.style.display = 'inline-block';
+            messageDiv.innerHTML = '';
+            
+            fetch('/save-workspace', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    workspace_name: workspaceName,
+                    directory_path: selectedDirectory
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    messageDiv.innerHTML = `<div class="success-message">✓ ${data.message}</div>`;
+                    continueText.textContent = 'Redirecting...';
+                    
+                    // Redirect to main visualizer after a short delay
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 1500);
+                } else {
+                    messageDiv.innerHTML = `<div class="error-message">Error: ${data.error}</div>`;
+                    continueText.textContent = 'Continue to Visualizer';
+                }
+            })
+            .catch(error => {
+                messageDiv.innerHTML = `<div class="error-message">Error: ${error.message}</div>`;
+                continueText.textContent = 'Continue to Visualizer';
+            })
+            .finally(() => {
+                continueSpinner.style.display = 'none';
+            });
+        }
+
+        // Add event listener for workspace name input
+        document.getElementById('workspace-name').addEventListener('input', updateContinueButton);
+    </script>
+</body>
+</html>
