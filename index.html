@@ -536,6 +536,8 @@
                 .attr("height", height)
                 .attr("viewBox", `0 0 ${width} ${height}`)
                 .attr("preserveAspectRatio", "xMidYMid meet")
+                .style("opacity", 0)
+                .style("transition", "opacity 140ms ease")
                 .call(zoomBehavior);
 
             const g = svg.append("g");
@@ -849,6 +851,12 @@
                     .attr("transform", d => `translate(${d.x},${d.y})`);
             });
 
+            // Reveal helper to avoid one-frame jump
+            let revealed = false;
+            function revealOnce() {
+                if (!revealed) { svg.style("opacity", 1); revealed = true; }
+            }
+
             // Zoom-to-fit utility
             function zoomToFit(padding = 24, instant = false) {
                 try {
@@ -868,6 +876,7 @@
                         svg.call(zoomBehavior.transform, t);
                         // Ensure the <g> matches even if zoom doesn't fire immediately
                         g.attr('transform', `translate(${tx},${ty}) scale(${scale})`);
+                        revealOnce();
                     } else {
                         svg.transition().duration(400).call(zoomBehavior.transform, t);
                     }
@@ -879,6 +888,7 @@
             simulation.on("end", () => {
                 if (!initialFitDone) {
                     zoomToFit(24, true);
+                    revealOnce();
                     initialFitDone = true;
                 } else {
                     zoomToFit();
@@ -886,13 +896,13 @@
             });
 
             // Fallbacks: ensure a fit shortly after render (some layouts finalize post paint)
-            requestAnimationFrame(() => zoomToFit(24, true));
-            setTimeout(() => zoomToFit(24, true), 150);
-            setTimeout(() => zoomToFit(24, true), 600);
+            requestAnimationFrame(() => { zoomToFit(24, true); revealOnce(); });
+            setTimeout(() => { zoomToFit(24, true); revealOnce(); }, 150);
+            setTimeout(() => { zoomToFit(24, true); revealOnce(); }, 600);
 
             // On visibility resume (e.g., after reload restore), recenter once
             document.addEventListener('visibilitychange', () => {
-                if (!document.hidden) zoomToFit(24, true);
+                if (!document.hidden) { zoomToFit(24, true); revealOnce(); }
             }, { once: true });
 
             // Refit on container resize
