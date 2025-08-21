@@ -1019,7 +1019,7 @@ svg {
     background-color: rgba(0, 0, 0, 0.8);
     justify-content: center;
     align-items: center;
-    z-index: 1000;
+    z-index: 3000; /* ensure main modals sit above side panels */
     opacity: 0;
     transition: opacity 0.3s ease;
 }
@@ -1032,10 +1032,11 @@ svg {
 #modal-content,
 #gemini-response-content {
     background-color: var(--modal-bg);
-    padding: 20px;
+    padding: 24px;
     border-radius: 8px;
-    max-width: 80%;
-    max-height: 80%;
+    width: min(92vw, 1200px);
+    max-width: 92vw;
+    max-height: 85vh;
     overflow: auto;
     border: 1px solid var(--border-color);
     position: relative;
@@ -1195,12 +1196,12 @@ svg {
 #right-modal {
     position: fixed;
     top: 0;
-    right: -30%; /* Completely hidden by default */
-    width: 30%;
+    right: -34%; /* Completely hidden by default */
+    width: 34%;
     height: 100%;
     background-color: var(--modal-bg);
     box-shadow: -5px 0 15px rgba(0, 0, 0, 0.5);
-    z-index: 1003;
+    z-index: 2500; /* under main modals */
     display: flex;
     flex-direction: column;
     transition: right 0.5s ease-in-out;
@@ -1241,12 +1242,12 @@ svg {
 #left-modal {
     position: fixed;
     top: 0;
-    left: -30%; /* Completely hidden by default */
-    width: 30%;
+    left: -34%; /* Completely hidden by default */
+    width: 34%;
     height: 100%;
     background-color: var(--modal-bg);
     box-shadow: 5px 0 15px rgba(0, 0, 0, 0.5);
-    z-index: 1003;
+    z-index: 2500; /* under main modals */
     display: flex;
     flex-direction: column;
     transition: left 0.5s ease-in-out;
@@ -1393,6 +1394,8 @@ svg {
     border: 1px solid var(--border-color);
     margin-bottom: 20px;
     outline: none;
+    font-size: 20px;
+    line-height: 1.6;
 }
 
 #right-modal-code-container[contenteditable="true"] {
@@ -1404,14 +1407,14 @@ svg {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 10px 0;
+    padding: 12px 0;
     border-bottom: 1px solid var(--border-color);
     margin-bottom: 15px;
 }
 
 .edit-toggle {
     color: var(--text-color);
-    font-size: 14px;
+    font-size: 18px;
     cursor: pointer;
 }
 
@@ -1427,6 +1430,7 @@ svg {
     border-radius: 4px;
     cursor: pointer;
     font-weight: bold;
+    font-size: 18px;
     transition: opacity 0.2s ease;
 }
 
