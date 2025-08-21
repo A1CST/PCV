@@ -854,17 +854,22 @@
                 try {
                     const bbox = g.node().getBBox();
                     if (!isFinite(bbox.width) || !isFinite(bbox.height) || bbox.width === 0 || bbox.height === 0) return;
-                    const scale = Math.min(
+                    const rawScale = Math.min(
                         (width - padding * 2) / bbox.width,
                         (height - padding * 2) / bbox.height
                     );
+                    // Respect zoomBehavior scaleExtent
+                    const minScale = 0.6, maxScale = 4;
+                    const scale = Math.max(minScale, Math.min(maxScale, rawScale));
                     const tx = (width - bbox.width * scale) / 2 - bbox.x * scale;
                     const ty = (height - bbox.height * scale) / 2 - bbox.y * scale;
                     const t = d3.zoomIdentity.translate(tx, ty).scale(scale);
                     if (instant) {
-                        svg.call(d3.zoom().transform, t);
+                        svg.call(zoomBehavior.transform, t);
+                        // Ensure the <g> matches even if zoom doesn't fire immediately
+                        g.attr('transform', `translate(${tx},${ty}) scale(${scale})`);
                     } else {
-                        svg.transition().duration(400).call(d3.zoom().transform, t);
+                        svg.transition().duration(400).call(zoomBehavior.transform, t);
                     }
                 } catch (_) { /* ignore */ }
             }
@@ -884,6 +889,11 @@
             requestAnimationFrame(() => zoomToFit(24, true));
             setTimeout(() => zoomToFit(24, true), 150);
             setTimeout(() => zoomToFit(24, true), 600);
+
+            // On visibility resume (e.g., after reload restore), recenter once
+            document.addEventListener('visibilitychange', () => {
+                if (!document.hidden) zoomToFit(24, true);
+            }, { once: true });
 
             // Refit on container resize
             const ro = new ResizeObserver(() => {
