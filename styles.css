@@ -1059,7 +1059,7 @@ svg {
     border: none;
     max-height: 400px;
     overflow-y: auto;
-    font-size: 16px; /* improve code legibility */
+    font-size: 20px; /* larger for legibility */
     line-height: 1.6;
 }
 
@@ -1176,7 +1176,7 @@ svg {
     flex: 1;
     overflow-y: auto;
     padding-bottom: 80px; /* Space for the fixed bar */
-    font-size: 16px; /* match code snippet legibility */
+    font-size: 20px; /* larger for legibility */
     line-height: 1.6;
 }
 
@@ -1308,12 +1308,12 @@ svg {
 .caller-file {
     color: var(--primary-green);
     font-weight: bold;
-    font-size: 16px;
+    font-size: 20px;
 }
 
 .caller-function {
     color: var(--text-color);
-    font-size: 16px;
+    font-size: 20px;
     margin-top: 5px;
 }
 
