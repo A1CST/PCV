@@ -700,7 +700,7 @@ input[type="color"]::-webkit-color-swatch {
     display: inline-block;
     padding: 2px 6px;
     border-radius: 3px;
-    font-size: 10px;
+    font-size: 14px;
     font-weight: bold;
     margin-right: 8px;
 }
@@ -1302,7 +1302,7 @@ svg {
 .caller-file {
     color: var(--primary-green);
     font-weight: bold;
-    font-size: 12px;
+    font-size: 14px;
 }
 
 .caller-function {
