@@ -221,17 +221,18 @@ body {
 
 #settings-content {
     background-color: var(--modal-bg);
-    padding: clamp(24px, 2vw, 40px);
+    padding: clamp(28px, 3vw, 56px);
     border-radius: 10px;
-    max-width: 860px;
-    width: min(92vw, 860px);
+    max-width: 1200px;
+    width: min(96vw, 1200px);
     border: 2px solid var(--primary-green);
     box-shadow: 0 10px 30px rgba(0, 255, 0, 0.3);
+    font-size: 20px; /* enlarge settings content */
 }
 
 #settings-title {
     color: var(--primary-green);
-    font-size: 28px;
+    font-size: 36px;
     font-weight: bold;
     margin-bottom: 20px;
     text-align: center;
@@ -250,6 +251,7 @@ body {
     font-weight: bold;
     margin-bottom: 10px;
     display: block;
+    font-size: 20px;
 }
 
 .toggle-switch {
@@ -305,13 +307,13 @@ input:checked + .slider:before {
 
 .theme-select {
     width: 100%;
-    padding: 8px 12px;
+    padding: 12px 16px;
     border-radius: 5px;
     border: 1px solid var(--border-color);
     background-color: var(--dark-gray);
     color: var(--text-color);
     font-family: inherit;
-    font-size: 14px;
+    font-size: 20px;
     margin-bottom: 10px;
 }
 
@@ -507,18 +509,19 @@ input[type="color"]::-webkit-color-swatch {
 #add-project-content,
 #new-project-content {
     background-color: var(--modal-bg);
-    padding: clamp(24px, 2vw, 40px);
+    padding: clamp(28px, 3vw, 56px);
     border-radius: 10px;
-    max-width: 760px;
-    width: min(92vw, 760px);
+    max-width: 1100px;
+    width: min(96vw, 1100px);
     border: 2px solid var(--primary-green);
     box-shadow: 0 10px 30px rgba(0, 255, 0, 0.3);
+    font-size: 20px;
 }
 
 #add-project-title,
 #new-project-title {
     color: var(--primary-green);
-    font-size: 28px;
+    font-size: 36px;
     font-weight: bold;
     margin-bottom: 20px;
     text-align: center;
@@ -533,17 +536,18 @@ input[type="color"]::-webkit-color-swatch {
     font-weight: bold;
     margin-bottom: 10px;
     display: block;
+    font-size: 20px;
 }
 
 .add-project-input {
     width: 100%;
-    padding: 10px;
+    padding: 14px;
     border-radius: 5px;
     border: 1px solid var(--border-color);
     background-color: var(--dark-gray);
     color: var(--text-color);
     font-family: inherit;
-    font-size: 14px;
+    font-size: 20px;
     margin-bottom: 10px;
 }
 
@@ -557,11 +561,11 @@ input[type="color"]::-webkit-color-swatch {
     background-color: var(--primary-green);
     color: var(--dark-gray);
     border: none;
-    padding: 10px 20px;
+    padding: 12px 22px;
     border-radius: 5px;
     cursor: pointer;
     font-weight: bold;
-    font-size: 14px;
+    font-size: 18px;
     margin: 5px;
     transition: all 0.2s ease;
 }
