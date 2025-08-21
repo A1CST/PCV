@@ -1,0 +1,24 @@
+# Features
+
+## Core
+- Interactive per-file graph with file node centered and function/class leaves.
+- Live file watching; re-parse and update graph on save.
+- Inline code editing with safe backup and re-analysis hook.
+
+## AI Integration
+- Provider switch: `none | gemini | ollama`.
+- Provider-agnostic initial analysis and Q&A endpoint.
+- Settings UI for model/base URL/CLI path.
+
+## Visualization
+- Semantic clustering: functions grouped by verb-like prefix (e.g., get/set/extract/process/calculate/...).
+- Concentric placement: classes on inner ring; function clusters on outer ring around file node.
+- Adaptive forces by node count and node degree; collision radius scales with size.
+- Zoom-to-fit after layout; auto-refit on resize and slide change; label hiding when zoomed out to reduce clutter.
+
+## UI/UX
+- Responsive `clamp()` sizing for readability on half-screen monitors.
+- Larger Settings / Add Project / New Project modals.
+- Browse buttons with Windows-native folder picker.
+
+
