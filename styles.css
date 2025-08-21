@@ -227,7 +227,7 @@ body {
     width: min(96vw, 1200px);
     border: 2px solid var(--primary-green);
     box-shadow: 0 10px 30px rgba(0, 255, 0, 0.3);
-    font-size: 20px; /* enlarge settings content */
+    font-size: 30px; /* +50% */
 }
 
 #settings-title {
@@ -251,7 +251,7 @@ body {
     font-weight: bold;
     margin-bottom: 10px;
     display: block;
-    font-size: 20px;
+    font-size: 30px; /* +50% */
 }
 
 .toggle-switch {
@@ -301,7 +301,7 @@ input:checked + .slider:before {
 
 .setting-description {
     color: var(--light-gray);
-    font-size: 18px;
+    font-size: 27px; /* +50% */
     margin-top: 8px;
     line-height: 1.5;
 }
@@ -314,7 +314,7 @@ input:checked + .slider:before {
     background-color: var(--dark-gray);
     color: var(--text-color);
     font-family: inherit;
-    font-size: 20px;
+    font-size: 30px; /* +50% */
     margin-bottom: 10px;
 }
 
@@ -516,7 +516,7 @@ input[type="color"]::-webkit-color-swatch {
     width: min(96vw, 1100px);
     border: 2px solid var(--primary-green);
     box-shadow: 0 10px 30px rgba(0, 255, 0, 0.3);
-    font-size: 20px;
+    font-size: 30px; /* +50% */
 }
 
 #add-project-title,
@@ -537,7 +537,7 @@ input[type="color"]::-webkit-color-swatch {
     font-weight: bold;
     margin-bottom: 10px;
     display: block;
-    font-size: 20px;
+    font-size: 30px; /* +50% */
 }
 
 .add-project-input {
@@ -548,7 +548,7 @@ input[type="color"]::-webkit-color-swatch {
     background-color: var(--dark-gray);
     color: var(--text-color);
     font-family: inherit;
-    font-size: 20px;
+    font-size: 30px; /* +50% */
     margin-bottom: 10px;
 }
 
