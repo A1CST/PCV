@@ -626,7 +626,7 @@ input[type="color"]::-webkit-color-swatch {
     justify-content: flex-start;
     align-items: center;
     overflow: hidden;
-    height: calc(100vh - (5vh + 12vh + 10vh));
+    height: calc(100vh - (5vh + 12vh + 5vh));
 }
 
 .carousel-section {
@@ -1094,7 +1094,7 @@ svg {
     background-color: var(--medium-gray);
     color: var(--light-gray);
     font-family: inherit;
-    font-size: clamp(14px, 1.6vh + 6px, 18px);
+    font-size: clamp(18px, 2.4vh + 8px, 24px);
     transition: all 0.2s ease;
 }
 
@@ -1116,7 +1116,7 @@ svg {
     color: var(--dark-gray);
     cursor: pointer;
     font-weight: bold;
-    font-size: clamp(14px, 1.6vh + 6px, 18px);
+    font-size: clamp(18px, 2.4vh + 8px, 24px);
     transition: all 0.2s ease;
 }
 
@@ -1137,7 +1137,7 @@ svg {
     padding: 10px 20px;
     box-shadow: 0 -5px 15px rgba(0, 0, 0, 0.5);
     z-index: 1001;
-    height: 10vh; /* 20% of lower half */
+    height: 5vh; /* halved bar height */
     display: flex;
     align-items: center;
 }
