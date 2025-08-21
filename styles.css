@@ -644,6 +644,7 @@ input[type="color"]::-webkit-color-swatch {
     display: flex;
     gap: 15px;
     margin-top: 10px;
+    margin-bottom: 5px; /* small buffer above Gemini bar */
     padding: 0 20px;
 }
 
