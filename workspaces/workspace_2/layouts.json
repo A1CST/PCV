@@ -1,0 +1,202 @@
+{
+  "enhanced_wave_engine.py": [
+    {
+      "id": "enhanced_wave_engine.py",
+      "x": 488,
+      "y": 633.5
+    },
+    {
+      "id": "enhanced_wave_engine.py::__init__",
+      "x": 405.59901676895635,
+      "y": 453.68219737148604
+    },
+    {
+      "id": "enhanced_wave_engine.py::_register_default_experts",
+      "x": 492.66528419569903,
+      "y": 418.38747975715324
+    },
+    {
+      "id": "enhanced_wave_engine.py::process_query",
+      "x": 541.2244628266627,
+      "y": 497.73198349785446
+    },
+    {
+      "id": "enhanced_wave_engine.py::_process_with_wave_cognition",
+      "x": 573.7412858013189,
+      "y": 452.1498111964967
+    },
+    {
+      "id": "enhanced_wave_engine.py::_extract_visual_symbols",
+      "x": 677.8037364684092,
+      "y": 612.4946985144232
+    },
+    {
+      "id": "enhanced_wave_engine.py::_extract_auditory_symbols",
+      "x": 638.4667357023008,
+      "y": 652.3437804068568
+    },
+    {
+      "id": "enhanced_wave_engine.py::_extract_goals",
+      "x": 637.0754247510085,
+      "y": 515.121632479781
+    },
+    {
+      "id": "enhanced_wave_engine.py::_generate_wave_answer",
+      "x": 626.1332163101207,
+      "y": 719.4441171983525
+    },
+    {
+      "id": "enhanced_wave_engine.py::_calculate_wave_confidence",
+      "x": 544.1194398833655,
+      "y": 766.8764139521306
+    },
+    {
+      "id": "enhanced_wave_engine.py::_generate_wave_reasoning",
+      "x": 635.811719476819,
+      "y": 575.476730116814
+    },
+    {
+      "id": "enhanced_wave_engine.py::_integrate_wave_expert_responses",
+      "x": 529.022218255506,
+      "y": 820.8141843460832
+    },
+    {
+      "id": "enhanced_wave_engine.py::_integrate_responses",
+      "x": 433.17076834131785,
+      "y": 798.8940845724507
+    },
+    {
+      "id": "enhanced_wave_engine.py::_integrate_answers",
+      "x": 591.4760471877537,
+      "y": 796.7422609985771
+    },
+    {
+      "id": "enhanced_wave_engine.py::_calculate_synergy_score",
+      "x": 475.5541649362562,
+      "y": 837.4159610012641
+    },
+    {
+      "id": "enhanced_wave_engine.py::_select_final_answer",
+      "x": 486.72414784238634,
+      "y": 782.5751821531692
+    },
+    {
+      "id": "enhanced_wave_engine.py::register_expert",
+      "x": 584.1965202148477,
+      "y": 533.5786580545613
+    },
+    {
+      "id": "enhanced_wave_engine.py::provide_feedback",
+      "x": 329.9851661951802,
+      "y": 700.7109099624109
+    },
+    {
+      "id": "enhanced_wave_engine.py::get_performance_summary",
+      "x": 339.5505418132121,
+      "y": 755.8740846709433
+    },
+    {
+      "id": "enhanced_wave_engine.py::optimize_performance",
+      "x": 286.2013310157055,
+      "y": 735.6208393489618
+    },
+    {
+      "id": "enhanced_wave_engine.py::__str__",
+      "x": 285.84587085135615,
+      "y": 604.4155117870148
+    },
+    {
+      "id": "enhanced_wave_engine.py::__repr__",
+      "x": 344.6933448681015,
+      "y": 491.61356501363497
+    },
+    {
+      "id": "enhanced_wave_engine.py::_is_meaningful",
+      "x": 319.0980298931224,
+      "y": 541.3913724658196
+    },
+    {
+      "id": "enhanced_wave_engine.py::EnhancedWaveEngine",
+      "x": 452.21753083020315,
+      "y": 484.71394098412975
+    }
+  ],
+  "test_llm_expert.py": [
+    {
+      "id": "test_llm_expert.py",
+      "x": 488,
+      "y": 633.5
+    },
+    {
+      "id": "test_llm_expert.py::test_llm_expert",
+      "x": 495.22070608616644,
+      "y": 492.0266170628846
+    }
+  ],
+  "ui_app.py": [
+    {
+      "id": "ui_app.py",
+      "x": 488,
+      "y": 633.5
+    },
+    {
+      "id": "ui_app.py::main",
+      "x": 415.4855681467133,
+      "y": 515.0722408421815
+    }
+  ],
+  "wave_logicbench_optimized.py": [
+    {
+      "id": "wave_logicbench_optimized.py",
+      "x": 488,
+      "y": 633.5
+    },
+    {
+      "id": "wave_logicbench_optimized.py::load_questions",
+      "x": 491.50914339963634,
+      "y": 481.8581270311875
+    },
+    {
+      "id": "wave_logicbench_optimized.py::run_optimized_wave",
+      "x": 736.9593020680582,
+      "y": 636.1526887829893
+    },
+    {
+      "id": "wave_logicbench_optimized.py::main",
+      "x": 485.59698480960543,
+      "y": 783.2814768374056
+    },
+    {
+      "id": "wave_logicbench_optimized.py::fallback_reasoning",
+      "x": 225.54482390589533,
+      "y": 634.7750946054982
+    }
+  ],
+  "wave_logicbench_wave_only.py": [
+    {
+      "id": "wave_logicbench_wave_only.py",
+      "x": 488,
+      "y": 633.5
+    },
+    {
+      "id": "wave_logicbench_wave_only.py::load_questions",
+      "x": 491.50914339963634,
+      "y": 481.8581270311875
+    },
+    {
+      "id": "wave_logicbench_wave_only.py::run_wave_only",
+      "x": 724.5680056813394,
+      "y": 627.8918855603331
+    },
+    {
+      "id": "wave_logicbench_wave_only.py::main",
+      "x": 485.59698480960543,
+      "y": 783.2814768374056
+    },
+    {
+      "id": "wave_logicbench_wave_only.py::fallback_reasoning",
+      "x": 235.8708431930047,
+      "y": 632.7099090586232
+    }
+  ]
+}

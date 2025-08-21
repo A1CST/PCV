@@ -1,0 +1,19 @@
+{
+  "workspace_1": {
+    "name": "multi_lang",
+    "directory": "C:/Users/jviru/ATWAVE/atlandemo/wave_engine_multi_lang",
+    "workspace_folder": "workspaces\\workspace_1"
+  },
+  "current_workspace": "workspace_2",
+  "gemini_enabled": false,
+  "gemini_initialize_on_startup": false,
+  "ai_provider": "none",
+  "ai_model": "qwen2.5-coder",
+  "ai_base_url": "http://localhost:11434",
+  "ai_timeout_sec": 5,
+  "workspace_2": {
+    "name": "ATWAVE",
+    "directory": "C:/Users/jviru/ATWAVE/atlandemo",
+    "workspace_folder": "workspaces\\workspace_2"
+  }
+}

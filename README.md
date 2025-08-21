@@ -88,3 +88,20 @@ Visualization: D3.js (for graph rendering)
 UI Libraries: Swiper.js (for the carousel)
 
 AI Integration: Google's Gemini API (via a command-line tool)
+
+Testing
+Run the test suite with pytest:
+
+```powershell
+python -m pytest -q
+```
+
+Continuous Integration
+GitHub Actions workflow is included at `.github/workflows/ci.yml` and runs the test suite on Ubuntu and Windows across Python 3.11 and 3.12 on pushes and pull requests to main, develop, and feature branches.
+
+Manual Layout Editing
+- Open the visualizer and navigate to a file's slide.
+- Click "Edit Layout" in the top-right of the slide to enter edit mode.
+- Drag function/class nodes to reposition them around the central file node (the file node remains fixed).
+- Click "Save Layout" to persist positions. Your layout is restored on reload and across sessions.
+- Saved layouts are stored per workspace at `workspaces/<workspace_X>/layouts.json`.

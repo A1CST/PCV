@@ -1,0 +1,38 @@
+{
+  "workspace_info": {
+    "description": "Workspace 'multi_lang' contains analysis and visualization data for the Python project at C:/Users/jviru/ATWAVE/atlandemo/wave_engine_multi_lang",
+    "files_in_workspace": {
+      "workspace.json": "Main workspace configuration (name, directory path, metadata)",
+      "overview.json": "Project overview, statistics, and summary information",
+      "recent_changes.json": "Track recent files modified, analysis updates, and user actions",
+      "preferences.json": "Workspace-specific settings and preferences",
+      "explanations.json": "This file - explanations specific to this workspace"
+    }
+  },
+  "project_analysis": {
+    "file_types": {
+      "function": "Python functions found in the codebase",
+      "class": "Python classes found in the codebase",
+      "file": "Python files in the workspace directory"
+    },
+    "visualization_features": {
+      "gemini_analysis": "AI-powered code analysis and insights for this project",
+      "call_graph": "Visual representation of function calls and dependencies",
+      "code_visualization": "Interactive graphs showing code structure",
+      "function_returns": "Track what each function returns",
+      "caller_tracking": "See where functions are called from"
+    }
+  },
+  "workspace_structure": {
+    "source_directory": "C:/Users/jviru/ATWAVE/atlandemo/wave_engine_multi_lang",
+    "workspace_id": "workspace_1",
+    "created_for": "multi_lang"
+  },
+  "usage_notes": {
+    "navigation": "Use the carousel to browse through Python files in your project",
+    "interaction": "Click on nodes in the graph to see code details and relationships",
+    "panels": "Side panels show function callers (left) and returns/code (right)",
+    "gemini": "Ask Gemini questions about your code using the input bars"
+  },
+  "created_at": "2025-08-21 10:51:09"
+}

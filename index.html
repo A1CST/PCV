@@ -143,7 +143,7 @@
                 <pre><code id="code-snippet" contenteditable="false"></code></pre>
             </div>
             <div id="modal-gemini-form">
-                <input type="text" id="modal-gemini-prompt" placeholder="Ask Gemini about this code...">
+                <input type="text" id="modal-gemini-prompt" placeholder="Ask your AI about this code...">
                 <button id="modal-gemini-send">Send</button>
             </div>
         </div>
@@ -171,7 +171,7 @@
             <div id="right-modal-returns"></div>
             <div id="right-modal-code-container" contenteditable="false"></div>
             <div id="right-modal-gemini-form">
-                <input type="text" id="right-modal-gemini-prompt" placeholder="Ask Gemini about this script...">
+                <input type="text" id="right-modal-gemini-prompt" placeholder="Ask your AI about this script...">
                 <button id="right-modal-gemini-send">Send</button>
             </div>
         </div>
@@ -189,20 +189,44 @@
         <div id="settings-content">
             <div id="settings-title">Settings</div>
             <div class="setting-item">
-                <label class="setting-label">Enable Gemini Analysis</label>
+                <label class="setting-label">Enable AI Analysis</label>
                 <label class="toggle-switch">
                     <input type="checkbox" id="gemini-enabled-toggle">
                     <span class="slider"></span>
                 </label>
-                <div class="setting-description">Allow Gemini to analyze your codebase</div>
+                <div class="setting-description">Allow the selected AI provider to analyze your codebase</div>
             </div>
             <div class="setting-item">
-                <label class="setting-label">Initialize Gemini on Startup</label>
+                <label class="setting-label">AI Provider</label>
+                <select id="ai-provider-selector" class="theme-select" onchange="refreshModelOptions()">
+                    <option value="none">None (disabled)</option>
+                    <option value="gemini">Gemini CLI</option>
+                    <option value="ollama">Ollama (local)</option>
+                </select>
+                <div class="setting-description">Choose which AI backend to use</div>
+            </div>
+            <div class="setting-item">
+                <label class="setting-label">AI Model</label>
+                <select id="ai-model-selector" class="theme-select"></select>
+                <div class="setting-description">Model name for the selected provider</div>
+            </div>
+            <div class="setting-item">
+                <label class="setting-label">AI Base URL</label>
+                <input type="text" id="ai-base-url-input" class="workspace-input" placeholder="http://localhost:11434">
+                <div class="setting-description">Only used for Ollama; ignore for Gemini</div>
+            </div>
+            <div class="setting-item" id="gemini-cli-section">
+                <label class="setting-label">Gemini CLI Path (optional)</label>
+                <input type="text" id="gemini-cli-path-input" class="workspace-input" placeholder="gemini">
+                <div class="setting-description">Leave blank to use system 'gemini'</div>
+            </div>
+            <div class="setting-item" id="startup-section">
+                <label class="setting-label">Initialize on Startup</label>
                 <label class="toggle-switch">
                     <input type="checkbox" id="gemini-startup-toggle">
                     <span class="slider"></span>
                 </label>
-                <div class="setting-description">Automatically start Gemini analysis when the app loads</div>
+                <div class="setting-description">Automatically start the selected AI provider when the app loads (Gemini only)</div>
             </div>
             <div class="setting-item">
                 <label class="setting-label">Color Scheme</label>
@@ -230,19 +254,19 @@
                 <div class="setting-description">Choose your own primary and secondary colors</div>
             </div>
             <div class="setting-item">
-                <label class="setting-label">Auto-save after Gemini edit</label>
+                <label class="setting-label">Auto-save after AI edit</label>
                 <label class="toggle-switch">
                     <input type="checkbox" id="auto-save-toggle">
                     <span class="slider"></span>
                 </label>
-                <div class="setting-description">Automatically save code changes suggested by Gemini to disk</div>
+                <div class="setting-description">Automatically save code changes suggested by AI to disk</div>
             </div>
-            <div class="setting-item">
+            <div class="setting-item" id="initialize-section">
                 <button id="initialize-gemini-btn" class="navbar-button" style="width: 100%;" disabled>
-                    <span id="initialize-btn-text">Initialize Gemini</span>
+                    <span id="initialize-btn-text">Initialize AI</span>
                     <span id="initialize-btn-spinner" class="loading-spinner" style="display: none;"></span>
                 </button>
-                <div class="setting-description">Manually start Gemini analysis (requires Gemini to be enabled)</div>
+                <div class="setting-description">Manually start analysis for the selected AI (Gemini requires initialization)</div>
             </div>
             <div style="display: flex; gap: 10px; margin-top: 20px;">
                 <button id="close-settings-button" class="navbar-button" style="flex: 1;">Close</button>
@@ -276,9 +300,12 @@
             <div class="add-project-step">
                 <label class="add-project-label">Step 1: Enter Project Directory Path</label>
                 <input type="text" class="add-project-input" id="add-project-directory" placeholder="Enter the full path to your Python project folder (e.g., C:\MyProject or /home/user/myproject)">
+                <div style="display:flex; gap:10px; flex-wrap:wrap;">
                 <button class="add-project-button secondary" onclick="validateAddProjectDirectory()">
                     <span id="validate-add-project-text">Validate Directory</span>
                 </button>
+                <button class="add-project-button secondary" onclick="browseAddProjectDirectory()">Browse…</button>
+                </div>
                 <div class="add-project-display" id="add-project-directory-display">
                     <span class="add-project-placeholder">Enter a directory path above and click "Validate Directory"</span>
                 </div>
@@ -306,9 +333,12 @@
             <div class="add-project-step">
                 <label class="add-project-label">Step 1: Select Parent Directory</label>
                 <input type="text" class="add-project-input" id="new-project-parent-directory" placeholder="Enter the parent directory where the new project folder will be created (e.g., C:\Projects or /home/user/projects)">
+                <div style="display:flex; gap:10px; flex-wrap:wrap;">
                 <button class="add-project-button secondary" onclick="validateNewProjectParentDirectory()">
                     <span id="validate-new-project-text">Validate Directory</span>
                 </button>
+                <button class="add-project-button secondary" onclick="browseNewProjectParentDirectory()">Browse…</button>
+                </div>
                 <div class="add-project-display" id="new-project-parent-display">
                     <span class="add-project-placeholder">Enter a parent directory path above and click "Validate Directory"</span>
                 </div>
@@ -334,7 +364,7 @@
     </div>
 
     <div id="gemini-request-bar">
-        <input type="text" id="main-gemini-prompt" placeholder="Ask Gemini about the current script...">
+        <input type="text" id="main-gemini-prompt" placeholder="Ask your AI about the current script or project">
         <button id="main-gemini-send">Send</button>
     </div>
 
@@ -492,21 +522,94 @@
 
             const width = container.clientWidth;
             const height = container.clientHeight;
+            const zoomBehavior = d3.zoom()
+                      .scaleExtent([0.6, 4])
+                      .on("zoom", function (event) {
+                          g.attr("transform", event.transform);
+                          const scale = event.transform.k || 1;
+                          // Reduce label clutter when zoomed out
+                          g.selectAll('text').attr('display', scale < 0.7 ? 'none' : null);
+                      });
+
             const svg = d3.select(container).append("svg")
                 .attr("width", width)
                 .attr("height", height)
                 .attr("viewBox", `0 0 ${width} ${height}`)
-                .call(d3.zoom().on("zoom", function (event) {
-                   g.attr("transform", event.transform)
-                }));
+                .attr("preserveAspectRatio", "xMidYMid meet")
+                .call(zoomBehavior);
 
             const g = svg.append("g");
 
+            // --- Compute soft clusters to reduce crowding ---
+            function splitNameIntoTokens(name) {
+                if (!name) return [];
+                const snake = name.split('_').filter(Boolean);
+                if (snake.length > 0) return snake;
+                // camelCase fallback
+                return name.replace(/([a-z])([A-Z])/g, '$1 $2').split(' ').map(s => s.toLowerCase());
+            }
+
+            const verbBuckets = new Set(['get','set','extract','integrate','process','calculate','generate','optimize','provide','is','has','make','build','create','update','load','save','render']);
+            function clusterKeyForNode(n) {
+                if (n.type === 'class') return 'class';
+                if (n.type === 'file') return 'file';
+                const tokens = splitNameIntoTokens(n.name || '');
+                if (tokens.length === 0) return 'other';
+                const first = tokens[0];
+                return verbBuckets.has(first) ? first : (tokens[0].length <= 2 ? 'other' : tokens[0]);
+            }
+
+            nodes.forEach(n => { n.cluster = clusterKeyForNode(n); });
+            const clusterKeys = Array.from(new Set(nodes.filter(n => n.type !== 'file').map(n => n.cluster)));
+            const centerX = width / 2;
+            const centerY = height / 2;
+            const innerR = Math.min(width, height) * 0.28;  // for classes
+            const outerR = Math.min(width, height) * 0.42;  // for function clusters
+
+            const clusterTargets = {};
+            // place class ring if present
+            if (clusterKeys.includes('class')) {
+                clusterTargets['class'] = { x: centerX, y: centerY - innerR };
+            }
+            // place other clusters around outer ring
+            const functionClusters = clusterKeys.filter(k => k !== 'class');
+            const kCount = Math.max(1, functionClusters.length);
+            functionClusters.forEach((k, i) => {
+                const angle = (i / kCount) * 2 * Math.PI - Math.PI / 2; // start at top
+                clusterTargets[k] = { x: centerX + outerR * Math.cos(angle), y: centerY + outerR * Math.sin(angle) };
+            });
+
+            // Adaptive force constants based on node count and degrees
+            const nodeCount = nodes.length;
+            const baseDist = 70;
+            const dist = baseDist + 12 * Math.log(Math.max(2, nodeCount));
+            const charge = -140 - 35 * Math.log(Math.max(2, nodeCount));
+            const collide = 18 + Math.min(10, Math.log(Math.max(2, nodeCount)) * 4);
+
+            // Degree map to space out hubs a bit more
+            const degreeMap = {};
+            links.forEach(l => {
+                const s = typeof l.source === 'object' ? l.source.id : l.source;
+                const t = typeof l.target === 'object' ? l.target.id : l.target;
+                degreeMap[s] = (degreeMap[s] || 0) + 1;
+                degreeMap[t] = (degreeMap[t] || 0) + 1;
+            });
+
             const simulation = d3.forceSimulation(nodes)
-                .force("link", d3.forceLink(links).id(d => d.id).distance(80))
-                .force("charge", d3.forceManyBody().strength(-200))
+                .force("link", d3.forceLink(links).id(d => d.id).distance(l => {
+                    const sid = l.source && l.source.id ? l.source.id : l.source;
+                    const tid = l.target && l.target.id ? l.target.id : l.target;
+                    const sd = Math.log(1 + (degreeMap[sid] || 1));
+                    const td = Math.log(1 + (degreeMap[tid] || 1));
+                    return dist + 8 * (sd + td);
+                }))
+                .force("charge", d3.forceManyBody().strength(charge))
                 .force("center", d3.forceCenter(width / 2, height / 2))
-                .force("collision", d3.forceCollide().radius(20));
+                .force("collision", d3.forceCollide().radius(collide))
+                // pull nodes toward their cluster centroids
+                .force("clusterX", d3.forceX(d => (clusterTargets[d.cluster]?.x) || centerX).strength(d => d.type === 'file' ? 1 : 0.12))
+                .force("clusterY", d3.forceY(d => (clusterTargets[d.cluster]?.y) || centerY).strength(d => d.type === 'file' ? 1 : 0.12))
+                .alphaDecay(0.06);
             
             // Fix the file node (green node) at the center
             const fileNode = nodes.find(n => n.type === 'file');
@@ -540,7 +643,6 @@
                 .data(nodes)
                 .enter().append("g")
                 .attr("class", "node")
-                .call(drag(simulation))
                 .on('click', (event, d) => {
                     if (d.type === 'file') {
                         const rightModal = document.getElementById('right-modal');
@@ -589,6 +691,146 @@
                     }
                 });
 
+            // --- Manual layout editing controls ---
+            let isLayoutEditing = false;
+
+            const toolbar = document.createElement('div');
+            toolbar.style.position = 'absolute';
+            toolbar.style.right = '16px';
+            toolbar.style.top = '12px';
+            toolbar.style.display = 'flex';
+            toolbar.style.gap = '8px';
+            toolbar.style.zIndex = '6';
+            container.parentElement.style.position = 'relative';
+            container.parentElement.appendChild(toolbar);
+
+            const editBtn = document.createElement('button');
+            editBtn.textContent = 'Edit Layout';
+            editBtn.className = 'navbar-button';
+            toolbar.appendChild(editBtn);
+
+            const saveBtn = document.createElement('button');
+            saveBtn.textContent = 'Save Layout';
+            saveBtn.className = 'navbar-button';
+            toolbar.appendChild(saveBtn);
+
+            function applyDragBehavior() {
+                const behavior = d3.drag()
+                    .on('start', (event, d) => {
+                        // Lock file node in place
+                        if (d.type === 'file') { return; }
+                        d.fx = d.x; d.fy = d.y;
+                        simulation.alphaTarget(0.1).restart();
+                    })
+                    .on('drag', (event, d) => {
+                        if (d.type === 'file') { return; }
+                        d.fx = event.x; d.fy = event.y;
+                        simulation.alphaTarget(0.1).restart();
+                    })
+                    .on('end', (event, d) => {
+                        if (d.type === 'file') { return; }
+                        if (!isLayoutEditing) {
+                            if (!event.active) simulation.alphaTarget(0);
+                            d.fx = null; d.fy = null;
+                        }
+                    });
+                node.call(behavior);
+            }
+            applyDragBehavior();
+
+            editBtn.addEventListener('click', () => {
+                isLayoutEditing = !isLayoutEditing;
+                editBtn.textContent = isLayoutEditing ? 'Editing…' : 'Edit Layout';
+                // Disable swiper gestures while editing
+                try {
+                    if (window.mainSwiper) {
+                        window.mainSwiper.allowTouchMove = !isLayoutEditing;
+                        window.mainSwiper.params.grabCursor = !isLayoutEditing;
+                        window.mainSwiper.params.simulateTouch = !isLayoutEditing;
+                        // mark this slide as no-swiping while editing
+                        const slideEl = container.parentElement;
+                        if (isLayoutEditing) {
+                            slideEl.classList.add('swiper-no-swiping');
+                        } else {
+                            slideEl.classList.remove('swiper-no-swiping');
+                        }
+                        window.mainSwiper.update && window.mainSwiper.update();
+                    }
+                } catch (_) {}
+                // Disable zoom/pan while editing to make node drags precise
+                if (isLayoutEditing) {
+                    svg.on('.zoom', null);
+                    // block events reaching swiper only while editing
+                    svg.on('mousedown.block', (event) => { event.stopPropagation(); })
+                       .on('pointerdown.block', (event) => { event.stopPropagation(); })
+                       .on('touchstart.block', (event) => { event.stopPropagation(); });
+                    node.on('mousedown.block', (event) => { event.stopPropagation(); })
+                        .on('touchstart.block', (event) => { event.stopPropagation(); });
+                    nodes.forEach(n => { if (n.type !== 'file') { n.fx = n.x; n.fy = n.y; } });
+                    simulation.alphaTarget(0.1).restart();
+                    svg.style('cursor', 'move');
+                } else {
+                    svg.call(zoomBehavior);
+                    // remove event blocks, re-enable swiper gestures fully
+                    svg.on('mousedown.block', null).on('pointerdown.block', null).on('touchstart.block', null);
+                    node.on('mousedown.block', null).on('touchstart.block', null);
+                    nodes.forEach(n => { if (n.type !== 'file') { n.fx = null; n.fy = null; } });
+                    simulation.alphaTarget(0).restart();
+                    svg.style('cursor', null);
+                }
+                applyDragBehavior();
+            });
+
+            saveBtn.addEventListener('click', () => {
+                const positions = nodes.map(n => ({ id: n.id, x: n.x, y: n.y }));
+                fetch('/save-layout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ file_id: file.id, positions })
+                }).then(r => r.json()).then(res => {
+                    addConsoleMessage(res.success ? 'Layout saved' : ('Layout save failed: ' + (res.error||'')), res.success ? 'SUCCESS' : 'ERROR');
+                    if (res.success) {
+                        // keep nodes pinned to saved positions and exit edit mode
+                        nodes.forEach(n => { if (n.type !== 'file') { n.fx = n.x; n.fy = n.y; } });
+                        isLayoutEditing = false;
+                        editBtn.textContent = 'Edit Layout';
+                        try {
+                            if (window.mainSwiper) {
+                                window.mainSwiper.allowTouchMove = true;
+                                window.mainSwiper.params.grabCursor = true;
+                                window.mainSwiper.params.simulateTouch = true;
+                                const slideEl = container.parentElement;
+                                slideEl.classList.remove('swiper-no-swiping');
+                                window.mainSwiper.update && window.mainSwiper.update();
+                            }
+                        } catch (_) {}
+                        svg.call(zoomBehavior);
+                        svg.on('mousedown.block', null).on('pointerdown.block', null).on('touchstart.block', null);
+                        node.on('mousedown.block', null).on('touchstart.block', null);
+                        svg.style('cursor', null);
+                        simulation.alphaTarget(0).restart();
+                    }
+                }).catch(err => addConsoleMessage('Layout save error: ' + err.message, 'ERROR'));
+            });
+
+            // Load saved layout and apply positions
+            fetch(`/load-layout?file_id=${encodeURIComponent(file.id)}`)
+                .then(r => r.json()).then(layout => {
+                    if (layout && layout.success && Array.isArray(layout.positions)) {
+                        const map = new Map(layout.positions.map(p => [p.id, p]));
+                        nodes.forEach(n => {
+                            const p = map.get(n.id);
+                            if (p && Number.isFinite(p.x) && Number.isFinite(p.y)) {
+                                n.fx = p.x;
+                                n.fy = p.y;
+                                n.x = p.x;
+                                n.y = p.y;
+                            }
+                        });
+                        simulation.alpha(0.2).restart();
+                    }
+                }).catch(() => {});
+
             node.append("circle")
                 .attr("r", d => d.type === 'file' ? 15 : (d.type === 'class' ? 10 : 8))
                 .attr("fill", d => d.type === 'file' ? '#00ff00' : (d.type === 'class' ? '#0000ff' : '#ff0000'));
@@ -606,6 +848,62 @@
                 node
                     .attr("transform", d => `translate(${d.x},${d.y})`);
             });
+
+            // Zoom-to-fit utility
+            function zoomToFit(padding = 24, instant = false) {
+                try {
+                    const bbox = g.node().getBBox();
+                    if (!isFinite(bbox.width) || !isFinite(bbox.height) || bbox.width === 0 || bbox.height === 0) return;
+                    const rawScale = Math.min(
+                        (width - padding * 2) / bbox.width,
+                        (height - padding * 2) / bbox.height
+                    );
+                    // Respect zoomBehavior scaleExtent
+                    const minScale = 0.6, maxScale = 4;
+                    const scale = Math.max(minScale, Math.min(maxScale, rawScale));
+                    const tx = (width - bbox.width * scale) / 2 - bbox.x * scale;
+                    const ty = (height - bbox.height * scale) / 2 - bbox.y * scale;
+                    const t = d3.zoomIdentity.translate(tx, ty).scale(scale);
+                    if (instant) {
+                        svg.call(zoomBehavior.transform, t);
+                        // Ensure the <g> matches even if zoom doesn't fire immediately
+                        g.attr('transform', `translate(${tx},${ty}) scale(${scale})`);
+                    } else {
+                        svg.transition().duration(400).call(zoomBehavior.transform, t);
+                    }
+                } catch (_) { /* ignore */ }
+            }
+
+            // Fit after simulation stabilizes (without animation on first load)
+            let initialFitDone = false;
+            let lockTransform = null;
+            simulation.on("end", () => {
+                if (!initialFitDone) {
+                    zoomToFit(24, true);
+                    const m = g.node().getCTM();
+                    if (m) lockTransform = `matrix(${m.a},${m.b},${m.c},${m.d},${m.e},${m.f})`;
+                    if (lockTransform) g.attr('transform', lockTransform);
+                    initialFitDone = true;
+                } else {
+                    zoomToFit();
+                }
+            });
+
+            // Fallbacks: ensure a fit shortly after render (some layouts finalize post paint)
+            requestAnimationFrame(() => { zoomToFit(24, true); });
+            setTimeout(() => { zoomToFit(24, true); }, 150);
+            setTimeout(() => { zoomToFit(24, true); }, 600);
+
+            // On visibility resume (e.g., after reload restore), recenter once
+            document.addEventListener('visibilitychange', () => {
+                if (!document.hidden) { zoomToFit(24, true); }
+            }, { once: true });
+
+            // Refit on container resize
+            const ro = new ResizeObserver(() => {
+                zoomToFit();
+            });
+            ro.observe(container);
         }
         
         function drag(simulation) {
@@ -921,6 +1219,7 @@
             }
         });
         
+        
         // Auto-save toggle event listener
         document.getElementById('auto-save-toggle').addEventListener('change', function() {
             settingsData.auto_save_gemini = this.checked;
@@ -1031,47 +1330,90 @@
                     
                     // Load custom colors
                     if (data.custom_primary) {
-                        document.getElementById('primary-color-picker').value = data.custom_primary;
+                        const p = document.getElementById('primary-color-picker'); if (p) p.value = data.custom_primary;
+                        settingsData.custom_primary = data.custom_primary;
                     }
                     if (data.custom_secondary) {
-                        document.getElementById('secondary-color-picker').value = data.custom_secondary;
+                        const s = document.getElementById('secondary-color-picker'); if (s) s.value = data.custom_secondary;
+                        settingsData.custom_secondary = data.custom_secondary;
                     }
+                    
                     
                     // Load auto-save setting
                     document.getElementById('auto-save-toggle').checked = data.auto_save_gemini || false;
                     settingsData.auto_save_gemini = data.auto_save_gemini || false;
+
+                    // Load AI provider settings
+                    const providerSelect = document.getElementById('ai-provider-selector');
+                    providerSelect.value = data.ai_provider || 'none';
+                    const modelSelect = document.getElementById('ai-model-selector');
+                    modelSelect.innerHTML = '';
+                    const addOpt = (val) => { const o = document.createElement('option'); o.value = val; o.textContent = val; modelSelect.appendChild(o); };
+                    if (Array.isArray(data.ollama_models) && data.ollama_models.length > 0) {
+                        data.ollama_models.forEach(addOpt);
+                    }
+                    if (data.ai_model) {
+                        // Ensure current model appears
+                        if (![...modelSelect.options].some(o => o.value === data.ai_model)) addOpt(data.ai_model);
+                        modelSelect.value = data.ai_model;
+                    }
+                    document.getElementById('ai-base-url-input').value = data.ai_base_url || '';
+                    document.getElementById('gemini-cli-path-input').value = data.gemini_cli_path || '';
                     
-                    // Show custom section if needed
+                    // Show custom section if needed and apply colors immediately
                     if (theme === 'custom') {
                         document.getElementById('custom-colors-section').style.display = 'block';
+                        applyCustomColors();
                     }
                     
                     updateInitializeButton();
+                    refreshModelOptions();
                 })
                 .catch(error => {
                     console.error('Error loading settings:', error);
                 });
         }
 
+        function refreshModelOptions() {
+            const provider = document.getElementById('ai-provider-selector').value;
+            const baseUrl = document.getElementById('ai-base-url-input').value.trim();
+            fetch(`/ai/models?provider=${encodeURIComponent(provider)}&base_url=${encodeURIComponent(baseUrl)}`)
+                .then(r => r.json())
+                .then(d => {
+                    const modelSelect = document.getElementById('ai-model-selector');
+                    if (!modelSelect) return;
+                    modelSelect.innerHTML = '';
+                    (d.models || []).forEach(m => {
+                        const o = document.createElement('option'); o.value = m; o.textContent = m; modelSelect.appendChild(o);
+                    });
+                    if (settingsData.ai_model && ![...modelSelect.options].some(o => o.value === settingsData.ai_model)) {
+                        const o = document.createElement('option'); o.value = settingsData.ai_model; o.textContent = settingsData.ai_model; modelSelect.appendChild(o);
+                    }
+                    if (settingsData.ai_model) modelSelect.value = settingsData.ai_model;
+                })
+                .catch(e => console.warn('Model list fetch failed', e));
+        }
+
         function updateInitializeButton() {
             const btn = document.getElementById('initialize-gemini-btn');
             const text = document.getElementById('initialize-btn-text');
             const spinner = document.getElementById('initialize-btn-spinner');
+            const provider = document.getElementById('ai-provider-selector').value;
             
             if (settingsData.gemini_enabled) {
                 btn.disabled = false;
-                if (settingsData.gemini_initialized) {
+                if (provider === 'gemini' && settingsData.gemini_initialized) {
                     text.textContent = 'Gemini Initialized';
                     btn.style.backgroundColor = '#00cc00'; // Green when initialized
                     btn.style.color = 'white';
                 } else {
-                    text.textContent = 'Initialize Gemini';
+                    text.textContent = provider === 'gemini' ? 'Initialize Gemini' : 'Initialize AI';
                     btn.style.backgroundColor = '#0066cc'; // Blue when enabled but not initialized
                     btn.style.color = 'white';
                 }
             } else {
                 btn.disabled = true;
-                text.textContent = 'Initialize Gemini';
+                text.textContent = 'Initialize AI';
                 btn.style.backgroundColor = '#cc0000'; // Red when disabled
                 btn.style.color = 'white';
             }
@@ -1100,6 +1442,10 @@
                 body: JSON.stringify({
                     gemini_enabled: geminiEnabled,
                     gemini_initialize_on_startup: geminiStartup,
+                    ai_provider: document.getElementById('ai-provider-selector').value,
+                    ai_model: document.getElementById('ai-model-selector').value.trim(),
+                    ai_base_url: document.getElementById('ai-base-url-input').value.trim(),
+                    gemini_cli_path: document.getElementById('gemini-cli-path-input').value.trim(),
                     theme: settingsData.theme,
                     custom_primary: settingsData.custom_primary,
                     custom_secondary: settingsData.custom_secondary,
@@ -1188,8 +1534,13 @@
         // Theme management functions
         function applyTheme(themeName) {
             document.documentElement.setAttribute('data-theme', themeName);
-            
-            if (themeName === 'custom') {
+            // For non-custom themes, set a safe contrasting text color dynamically
+            if (themeName !== 'custom') {
+                const computedBg = getComputedStyle(document.documentElement).getPropertyValue('--secondary-color').trim() || '#0D1117';
+                const text = pickContrastingColor(computedBg);
+                document.documentElement.style.setProperty('--text-color', text);
+                document.documentElement.style.setProperty('--light-gray', text);
+            } else {
                 applyCustomColors();
             }
         }
@@ -1197,10 +1548,24 @@
         function applyCustomColors() {
             const primary = settingsData.custom_primary;
             const secondary = settingsData.custom_secondary;
+            const textColor = pickContrastingColor(secondary);
             
-            // Apply only primary and secondary colors
+            // Apply colors and auto-contrast text
             document.documentElement.style.setProperty('--custom-primary', primary);
             document.documentElement.style.setProperty('--custom-secondary', secondary);
+            document.documentElement.style.setProperty('--text-color', textColor);
+            document.documentElement.style.setProperty('--light-gray', textColor);
+        }
+
+        // Utility: compute high-contrast text color (black/white) from background
+        function pickContrastingColor(hex) {
+            const c = hex.replace('#','');
+            const r = parseInt(c.substring(0,2), 16);
+            const g = parseInt(c.substring(2,4), 16);
+            const b = parseInt(c.substring(4,6), 16);
+            // YIQ formula
+            const yiq = (r*299 + g*587 + b*114) / 1000;
+            return yiq >= 128 ? '#111827' : '#e5e7eb';
         }
         
         // Removed complex color manipulation - using only primary and secondary colors
@@ -1541,6 +1906,15 @@
                 on: {
                     slideChange: function () {
                         updateActiveNavButton(this.realIndex);
+                        // Refit the active slide's graph on slide change
+                        setTimeout(() => {
+                            const active = document.querySelector('.swiper-slide-active div:last-child svg');
+                            if (active) {
+                                // Trigger a resize by dispatching a ResizeObserver refresh via size change
+                                const evt = new Event('resize');
+                                window.dispatchEvent(evt);
+                            }
+                        }, 250);
                     }
                 }
             });
@@ -1603,6 +1977,28 @@
                 messageDiv.innerHTML = `<div style="color: var(--primary-color); margin-top: 10px; font-size: 14px;">Error: ${error.message}</div>`;
                 validateText.textContent = 'Validate Directory';
             });
+        }
+
+        async function browseAddProjectDirectory() {
+            const messageDiv = document.getElementById('add-project-message');
+            const validateText = document.getElementById('validate-add-project-text');
+            try {
+                const resp = await fetch('/browse-directory', { method: 'POST' });
+                const data = await resp.json();
+                if (data.success) {
+                    document.getElementById('add-project-directory').value = data.directory_path;
+                    addProjectDirectory = data.directory_path;
+                    document.getElementById('add-project-directory-display').innerHTML = `
+                        <span style="color: var(--primary-green);">✓</span>
+                        <span style=\"margin-left: 10px;\">${addProjectDirectory}</span>`;
+                    validateText.textContent = 'Change Directory';
+                    updateAddProjectContinueButton();
+                } else {
+                    messageDiv.innerHTML = `<div style="color: var(--primary-color); margin-top: 10px; font-size: 14px;">Error: ${data.error}</div>`;
+                }
+            } catch (e) {
+                messageDiv.innerHTML = `<div style="color: var(--primary-color); margin-top: 10px; font-size: 14px;">Error: ${e.message}</div>`;
+            }
         }
 
         function updateAddProjectContinueButton() {
@@ -1721,6 +2117,28 @@
                 messageDiv.innerHTML = `<div style="color: var(--primary-color); margin-top: 10px; font-size: 14px;">Error: ${error.message}</div>`;
                 validateText.textContent = 'Validate Directory';
             });
+        }
+
+        async function browseNewProjectParentDirectory() {
+            const messageDiv = document.getElementById('new-project-message');
+            const validateText = document.getElementById('validate-new-project-text');
+            try {
+                const resp = await fetch('/browse-directory', { method: 'POST' });
+                const data = await resp.json();
+                if (data.success) {
+                    document.getElementById('new-project-parent-directory').value = data.directory_path;
+                    newProjectParentDirectory = data.directory_path;
+                    document.getElementById('new-project-parent-display').innerHTML = `
+                        <span style="color: var(--primary-green);">✓</span>
+                        <span style=\"margin-left: 10px;\">${newProjectParentDirectory}</span>`;
+                    validateText.textContent = 'Change Directory';
+                    updateNewProjectContinueButton();
+                } else {
+                    messageDiv.innerHTML = `<div style="color: var(--primary-color); margin-top: 10px; font-size: 14px;">Error: ${data.error}</div>`;
+                }
+            } catch (e) {
+                messageDiv.innerHTML = `<div style="color: var(--primary-color); margin-top: 10px; font-size: 14px;">Error: ${e.message}</div>`;
+            }
         }
 
         function updateNewProjectContinueButton() {

@@ -11,19 +11,34 @@ from collections import deque
 from datetime import datetime
 from flask import Flask, render_template_string, jsonify, request, send_from_directory
 from flask_socketio import SocketIO, emit
-import tkinter as tk
-from tkinter import filedialog
+try:
+    import tkinter as tk
+    from tkinter import filedialog
+except Exception:
+    tk = None
+    filedialog = None
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
 app = Flask(__name__)
-socketio = SocketIO(app, cors_allowed_origins="*")
+# Restrict CORS to local origins by default
+ALLOWED_ORIGINS = ['http://127.0.0.1:7000', 'http://localhost:7000']
+socketio = SocketIO(app, cors_allowed_origins=ALLOWED_ORIGINS, async_mode="threading")
 directory_data = {}
+directory_data_lock = threading.RLock()
 initial_analysis = ""
 analysis_complete = False
-GEMINI_ENABLED = False  # Set to False to disable Gemini analysis
-GEMINI_INITIALIZE_ON_STARTUP = False  # Whether to auto-initialize Gemini on startup
-GEMINI_INITIALIZED = False  # Whether Gemini has been initialized
+GEMINI_ENABLED = False  # Backward-compatible flag for AI enablement
+GEMINI_INITIALIZE_ON_STARTUP = False  # Whether to auto-initialize AI on startup
+GEMINI_INITIALIZED = False  # Whether AI has been initialized
+DEBUG_LOG_AI_RESPONSES = False  # Gate verbose AI logs
+
+# Generic AI settings
+AI_PROVIDER = 'none'  # 'none' | 'gemini' | 'ollama'
+AI_MODEL = 'qwen2.5-coder'
+AI_BASE_URL = 'http://localhost:11434'
+AI_TIMEOUT_SEC = 120
+GEMINI_CLI_PATH = None  # Optional override for gemini CLI path
 
 # Console logging system
 console_logs = deque(maxlen=1000)  # Keep last 1000 log entries
@@ -63,7 +78,6 @@ class CodeFileHandler(FileSystemEventHandler):
     def reanalyze_file(self, file_path):
         """Re-analyze a single modified file"""
         try:
-            global directory_data
             filename = os.path.basename(file_path)
             
             log_to_console(f"Re-analyzing {filename}...", "INFO")
@@ -74,45 +88,52 @@ class CodeFileHandler(FileSystemEventHandler):
             if not content:  # Skip if file couldn't be parsed
                 return
             
-            # Update directory_data
-            # Remove old nodes for this file
-            directory_data['nodes'] = [n for n in directory_data['nodes'] 
-                                     if not (n.get('file') == filename or n['id'] == filename)]
-            directory_data['edges'] = [e for e in directory_data['edges'] 
-                                     if e['source'] != filename]
-            
-            # Add updated file node
-            directory_data['nodes'].append({
-                "id": filename, 
-                "name": filename, 
-                "type": "file", 
-                "code": content
-            })
-            
-            # Add updated function and class nodes
-            for func in functions:
-                func_id = f"{filename}::{func['name']}"
+            # Update directory_data under lock
+            with directory_data_lock:
+                if 'nodes' not in directory_data or 'edges' not in directory_data:
+                    directory_data['nodes'] = []
+                    directory_data['edges'] = []
+                # Remove old nodes for this file
+                directory_data['nodes'] = [n for n in directory_data['nodes'] 
+                                         if not (n.get('file') == filename or n['id'] == filename)]
+                directory_data['edges'] = [e for e in directory_data['edges'] 
+                                         if e['source'] != filename]
+                
+                # Add updated file node
                 directory_data['nodes'].append({
-                    "id": func_id, 
-                    "name": func['name'], 
-                    "type": "function", 
-                    "code": func['code'],
-                    "returns": func.get('returns', []),
-                    "called_by": [],
-                    "file": filename
+                    "id": filename, 
+                    "name": filename, 
+                    "type": "file", 
+                    "code": content,
+                    "file_path": file_path
                 })
-                directory_data['edges'].append({"source": filename, "target": func_id})
-            
-            for cls in classes:
-                class_id = f"{filename}::{cls['name']}"
-                directory_data['nodes'].append({
-                    "id": class_id, 
-                    "name": cls['name'], 
-                    "type": "class", 
-                    "code": cls['code'],
-                    "file": filename
-                })
-                directory_data['edges'].append({"source": filename, "target": class_id})
+                
+                # Add updated function and class nodes
+                for func in functions:
+                    func_id = f"{filename}::{func['name']}"
+                    directory_data['nodes'].append({
+                        "id": func_id, 
+                        "name": func['name'], 
+                        "type": "function", 
+                        "code": func['code'],
+                        "returns": func.get('returns', []),
+                        "called_by": [],
+                        "file": filename,
+                        "file_path": file_path
+                    })
+                    directory_data['edges'].append({"source": filename, "target": func_id})
+                
+                for cls in classes:
+                    class_id = f"{filename}::{cls['name']}"
+                    directory_data['nodes'].append({
+                        "id": class_id, 
+                        "name": cls['name'], 
+                        "type": "class", 
+                        "code": cls['code'],
+                        "file": filename,
+                        "file_path": file_path
+                    })
+                    directory_data['edges'].append({"source": filename, "target": class_id})
             
             log_to_console(f"Successfully updated {filename}", "SUCCESS")
             
@@ -136,7 +157,7 @@ def start_file_monitoring(directory):
     try:
         current_monitoring_directory = directory
         file_observer = Observer()
-        file_observer.schedule(CodeFileHandler(), directory, recursive=False)
+        file_observer.schedule(CodeFileHandler(), directory, recursive=True)
         file_observer.start()
         log_to_console(f"Started monitoring directory: {directory}", "SUCCESS")
     except Exception as e:
@@ -153,20 +174,39 @@ def stop_file_monitoring():
 CONFIG_FILE = "visualizer_config.json"
 WORKSPACES_DIR = "workspaces"
 GLOBAL_PREFERENCES_FILE = "global_preferences.json"
+LAYOUTS_FILENAME = "layouts.json"
 
 def load_config():
-    global GEMINI_ENABLED, GEMINI_INITIALIZE_ON_STARTUP
+    global GEMINI_ENABLED, GEMINI_INITIALIZE_ON_STARTUP, AI_PROVIDER, AI_MODEL, AI_BASE_URL, AI_TIMEOUT_SEC, GEMINI_CLI_PATH
     try:
         if os.path.exists(CONFIG_FILE):
             with open(CONFIG_FILE, 'r') as f:
                 config = json.load(f)
                 GEMINI_ENABLED = config.get('gemini_enabled', False)
                 GEMINI_INITIALIZE_ON_STARTUP = config.get('gemini_initialize_on_startup', False)
+                AI_PROVIDER = config.get('ai_provider', 'none')
+                AI_MODEL = config.get('ai_model', 'qwen2.5-coder')
+                AI_BASE_URL = config.get('ai_base_url', 'http://localhost:11434')
+                AI_TIMEOUT_SEC = config.get('ai_timeout_sec', 120)
+                GEMINI_CLI_PATH = config.get('gemini_cli_path')
                 print(f"Loaded config: Gemini enabled={GEMINI_ENABLED}, Auto-initialize={GEMINI_INITIALIZE_ON_STARTUP}")
         else:
             print("No config file found, using default settings")
     except Exception as e:
         print(f"Error loading config: {e}, using default settings")
+
+# Thread-safe helpers for directory_data
+def get_directory_data_snapshot():
+    try:
+        with directory_data_lock:
+            return json.loads(json.dumps(directory_data))
+    except Exception:
+        return {"nodes": [], "edges": []}
+
+def set_directory_data(new_data):
+    global directory_data
+    with directory_data_lock:
+        directory_data = new_data
 
 def is_first_run():
     """Check if this is the first run of the program"""
@@ -257,13 +297,19 @@ def save_config():
             with open(CONFIG_FILE, 'r') as f:
                 config = json.load(f)
         
-        # Update only the Gemini settings
+        # Update AI settings
         config['gemini_enabled'] = GEMINI_ENABLED
         config['gemini_initialize_on_startup'] = GEMINI_INITIALIZE_ON_STARTUP
+        config['ai_provider'] = AI_PROVIDER
+        config['ai_model'] = AI_MODEL
+        config['ai_base_url'] = AI_BASE_URL
+        config['ai_timeout_sec'] = AI_TIMEOUT_SEC
+        if GEMINI_CLI_PATH:
+            config['gemini_cli_path'] = GEMINI_CLI_PATH
         
         with open(CONFIG_FILE, 'w') as f:
             json.dump(config, f, indent=2)
-        print(f"Config saved: Gemini enabled={GEMINI_ENABLED}, Auto-initialize={GEMINI_INITIALIZE_ON_STARTUP}")
+        print(f"Config saved: AI provider={AI_PROVIDER}, Enabled={GEMINI_ENABLED}, Auto-init={GEMINI_INITIALIZE_ON_STARTUP}")
     except Exception as e:
         print(f"Error saving config: {e}")
 
@@ -584,8 +630,15 @@ def analyze_directory(directory):
     call_graph = {}  # Store who calls what
     
     try:
-        files = [f for f in os.listdir(directory) if f.endswith('.py')]
-        log_to_console(f"Found {len(files)} Python files to analyze", "INFO")
+        files = []
+        skip_dirs = {'.git', '.venv', 'venv', '__pycache__', '.mypy_cache', '.pytest_cache', 'node_modules'}
+        for root, dirnames, filenames in os.walk(directory):
+            # Filter out common large/noisy directories
+            dirnames[:] = [d for d in dirnames if d not in skip_dirs]
+            for fn in filenames:
+                if fn.endswith('.py'):
+                    files.append(os.path.join(root, fn))
+        log_to_console(f"Found {len(files)} Python files to analyze (recursive)", "INFO")
         
         # Limit the number of files to prevent performance issues
         if len(files) > 50:
@@ -596,32 +649,32 @@ def analyze_directory(directory):
         return {"nodes": [], "edges": []}
     
     # First pass: collect all functions and their details
-    for i, filename in enumerate(files):
-        log_to_console(f"Parsing file {i+1}/{len(files)}: {filename}", "INFO")
-        file_path = os.path.join(directory, filename)
+    for i, file_path in enumerate(files):
+        rel_name = os.path.relpath(file_path, directory).replace('\\', '/')
+        log_to_console(f"Parsing file {i+1}/{len(files)}: {rel_name}", "INFO")
         
         try:
             functions, classes, content = parse_python_file(file_path)
             
             # Skip files that couldn't be parsed (empty content)
             if not content:
-                log_to_console(f"Skipping {filename} - could not parse", "WARNING")
+                log_to_console(f"Skipping {rel_name} - could not parse", "WARNING")
                 continue
             
             for func in functions:
-                func_id = f"{filename}::{func['name']}"
+                func_id = f"{rel_name}::{func['name']}"
                 all_functions[func_id] = func
-                all_functions[func_id]['file'] = filename
+                all_functions[func_id]['file'] = rel_name
                 all_functions[func_id]['called_by'] = []
         except Exception as e:
-            log_to_console(f"Error parsing {filename}: {str(e)}", "ERROR")
+            log_to_console(f"Error parsing {rel_name}: {str(e)}", "ERROR")
             continue
     
     # Second pass: analyze function calls (optimized)
     log_to_console(f"Analyzing function calls in {len(files)} files...", "INFO")
-    for i, filename in enumerate(files):
-        log_to_console(f"Analyzing calls in file {i+1}/{len(files)}: {filename}", "INFO")
-        file_path = os.path.join(directory, filename)
+    for i, file_path in enumerate(files):
+        rel_name = os.path.relpath(file_path, directory).replace('\\', '/')
+        log_to_console(f"Analyzing calls in file {i+1}/{len(files)}: {rel_name}", "INFO")
         try:
             with open(file_path, 'r', encoding='utf-8') as file:
                 content = file.read()
@@ -658,29 +711,29 @@ def analyze_directory(directory):
                                         best_match_line = func_line
                                 
                                 if current_func:
-                                    caller_id = f"{filename}::{current_func}"
+                                    caller_id = f"{rel_name}::{current_func}"
                                     if caller_id in all_functions:
                                         if caller_id not in all_functions[func_id]['called_by']:
                                             all_functions[func_id]['called_by'].append(caller_id)
         except Exception as e:
-            log_to_console(f"Error analyzing calls in {filename}: {str(e)}", "WARNING")
+            log_to_console(f"Error analyzing calls in {rel_name}: {str(e)}", "WARNING")
             continue
     
     # Build nodes and edges
     log_to_console(f"Building graph nodes and edges...", "INFO")
-    for i, filename in enumerate(files):
-        log_to_console(f"Building nodes for file {i+1}/{len(files)}: {filename}", "INFO")
-        file_id = filename
-        file_path = os.path.join(directory, filename)
+    for i, file_path in enumerate(files):
+        rel_name = os.path.relpath(file_path, directory).replace('\\', '/')
+        log_to_console(f"Building nodes for file {i+1}/{len(files)}: {rel_name}", "INFO")
+        file_id = rel_name
         functions, classes, content = parse_python_file(file_path)
         
         if not content:
             continue
         
-        nodes.append({"id": file_id, "name": filename, "type": "file", "code": content})
+        nodes.append({"id": file_id, "name": rel_name, "type": "file", "code": content, "file_path": file_path})
         
         for func in functions:
-            func_id = f"{filename}::{func['name']}"
+            func_id = f"{rel_name}::{func['name']}"
             func_data = all_functions.get(func_id, func)
             nodes.append({
                 "id": func_id, 
@@ -689,18 +742,20 @@ def analyze_directory(directory):
                 "code": func['code'],
                 "returns": func_data.get('returns', []),
                 "called_by": func_data.get('called_by', []),
-                "file": filename
+                "file": rel_name,
+                "file_path": file_path
             })
             edges.append({"source": file_id, "target": func_id})
             
         for cls in classes:
-            class_id = f"{filename}::{cls['name']}"
+            class_id = f"{rel_name}::{cls['name']}"
             nodes.append({
                 "id": class_id, 
                 "name": cls['name'], 
                 "type": "class", 
                 "code": cls['code'],
-                "file": filename
+                "file": rel_name,
+                "file_path": file_path
             })
             edges.append({"source": file_id, "target": class_id})
 
@@ -708,22 +763,32 @@ def analyze_directory(directory):
 
 def parse_gemini_commands(gemini_response_text):
     commands = []
-    
-    # Regex for file_create blocks
-    create_pattern = re.compile(r'```file_create\s*\npath:\s*(.*?)\ncontent:\s*|\n(.*?)\n```', re.DOTALL)
-    for match in create_pattern.finditer(gemini_response_text):
-        path = match.group(1).strip()
-        content = match.group(2).strip()
-        commands.append({'type': 'create_file', 'path': path, 'content': content})
-        
-    # Regex for file_modify blocks
-    modify_pattern = re.compile(r'```file_modify\s*\npath:\s*(.*?)\nfind:\s*|\n(.*?)\nreplace:\s*|\n(.*?)\n```', re.DOTALL)
-    for match in modify_pattern.finditer(gemini_response_text):
-        path = match.group(1).strip()
-        find_str = match.group(2).strip()
-        replace_str = match.group(3).strip()
-        commands.append({'type': 'modify_file', 'path': path, 'find': find_str, 'replace': replace_str})
-        
+    try:
+        # Extract ```file_create ... ``` blocks
+        create_blocks = re.findall(r"```file_create\s*\n([\s\S]*?)```", gemini_response_text)
+        for block in create_blocks:
+            path_match = re.search(r"(?m)^path:\s*(.+)\s*$", block)
+            if not path_match:
+                continue
+            path = path_match.group(1).strip()
+            content_match = re.search(r"(?ms)^content:\s*\n(.*)\Z", block)
+            content = content_match.group(1) if content_match else ""
+            commands.append({'type': 'create_file', 'path': path, 'content': content})
+
+        # Extract ```file_modify ... ``` blocks
+        modify_blocks = re.findall(r"```file_modify\s*\n([\s\S]*?)```", gemini_response_text)
+        for block in modify_blocks:
+            path_match = re.search(r"(?m)^path:\s*(.+)\s*$", block)
+            if not path_match:
+                continue
+            path = path_match.group(1).strip()
+            find_match = re.search(r"(?ms)^find:\s*\n(.*?)\n^replace:\s*\n", block)
+            replace_match = re.search(r"(?ms)^replace:\s*\n(.*)\Z", block)
+            find_str = find_match.group(1) if find_match else ""
+            replace_str = replace_match.group(1) if replace_match else ""
+            commands.append({'type': 'modify_file', 'path': path, 'find': find_str, 'replace': replace_str})
+    except Exception as e:
+        log_to_console(f"Error parsing AI commands: {str(e)}", "WARNING")
     return commands
 
 def execute_commands(commands, base_directory):
@@ -761,7 +826,7 @@ def execute_commands(commands, base_directory):
             
     return results
 
-def perform_gemini_analysis():
+def perform_ai_analysis():
     global initial_analysis, analysis_complete
     
     # Check for cached overview first
@@ -778,7 +843,7 @@ def perform_gemini_analysis():
                 
                 # Only skip analysis if we have a cached summary AND last_analysis is not null
                 if cached_summary and last_analysis is not None:
-                    log_to_console("Loading cached Gemini analysis...", "INFO")
+                    log_to_console("Loading cached AI analysis...", "INFO")
                     initial_analysis = cached_summary
                     analysis_complete = True
                     log_to_console("Cached analysis loaded successfully", "SUCCESS")
@@ -790,12 +855,12 @@ def perform_gemini_analysis():
     
     # Run new analysis if no cache found
     try:
-        log_to_console("Initializing Gemini analysis...", "INFO")
-        log_to_console("Connecting to Gemini API...", "INFO")
+        log_to_console("Initializing AI analysis...", "INFO")
         
         all_code = ""
         file_count = 0
-        for node in directory_data['nodes']:
+        snapshot = get_directory_data_snapshot()
+        for node in snapshot.get('nodes', []):
             if node['type'] == 'file':
                 try:
                     # Ensure the code is properly encoded and clean
@@ -813,24 +878,43 @@ def perform_gemini_analysis():
         
         analysis_prompt = "Analyze this codebase and provide a high-level overview. Focus on:\n1. Main purpose and functionality\n2. Key components and their relationships\n3. Architecture patterns used\n4. Potential areas of interest or complexity\n\nDo not change anything, just analyze and explain."
         
-        log_to_console("Sending code to Gemini for analysis...", "INFO")
-        
-        command = ["C:\\Users\\paytonmiller\\AppData\\Roaming\\npm\\gemini.cmd", "-p", "-"]
-        result = subprocess.run(
-            command,
-            input=analysis_prompt + "\n\n" + all_code,
-            capture_output=True,
-            text=True,
-            encoding='utf-8',
-            errors='replace',
-            check=True,
-            timeout=60  # Add a 60-second timeout
-        )
-        
-        log_to_console("Gemini analysis completed successfully", "SUCCESS")
+        response_text = None
+        if AI_PROVIDER == 'ollama':
+            try:
+                import requests
+                log_to_console(f"Calling Ollama at {AI_BASE_URL} model={AI_MODEL}", "INFO")
+                payload = {"model": AI_MODEL, "prompt": analysis_prompt + "\n\n" + all_code, "stream": False}
+                r = requests.post(f"{AI_BASE_URL}/api/generate", json=payload, timeout=AI_TIMEOUT_SEC)
+                r.raise_for_status()
+                data = r.json()
+                response_text = data.get('response', '')
+            except Exception as e:
+                log_to_console(f"Ollama request failed: {str(e)}", "ERROR")
+        elif AI_PROVIDER == 'gemini':
+            try:
+                command = [GEMINI_CLI_PATH or "gemini", "-p", "-"]
+                result = subprocess.run(
+                    command,
+                    input=analysis_prompt + "\n\n" + all_code,
+                    capture_output=True,
+                    text=True,
+                    encoding='utf-8',
+                    errors='replace',
+                    check=True,
+                    timeout=AI_TIMEOUT_SEC
+                )
+                response_text = result.stdout
+            except Exception as e:
+                log_to_console(f"Gemini CLI failed: {str(e)}", "ERROR")
+        else:
+            log_to_console("AI provider is 'none'; skipping analysis.", "INFO")
+            response_text = "AI analysis disabled."
+
+        if response_text is None:
+            response_text = "Initial analysis could not be completed."
+
         log_to_console("Caching analysis results...", "INFO")
-        
-        initial_analysis = result.stdout
+        initial_analysis = response_text
         analysis_complete = True
         
         # Save analysis to overview.json
@@ -839,7 +923,7 @@ def perform_gemini_analysis():
         log_to_console("Analysis cached and ready for user queries", "SUCCESS")
         
     except Exception as e:
-        log_to_console(f"Error during Gemini analysis: {str(e)}", "ERROR")
+        log_to_console(f"Error during AI analysis: {str(e)}", "ERROR")
         initial_analysis = "Initial analysis could not be completed."
         analysis_complete = True
 
@@ -860,16 +944,17 @@ def save_gemini_overview(analysis_text):
                 overview_data = json.load(f)
         
         # Update with Gemini analysis and project stats
-        file_count = len([n for n in directory_data['nodes'] if n['type'] == 'file'])
-        function_count = len([n for n in directory_data['nodes'] if n['type'] == 'function'])
-        class_count = len([n for n in directory_data['nodes'] if n['type'] == 'class'])
+        snapshot = get_directory_data_snapshot()
+        file_count = len([n for n in snapshot.get('nodes', []) if n['type'] == 'file'])
+        function_count = len([n for n in snapshot.get('nodes', []) if n['type'] == 'function'])
+        class_count = len([n for n in snapshot.get('nodes', []) if n['type'] == 'class'])
         
         overview_data.update({
             'project_stats': {
                 'total_files': file_count,
                 'total_functions': function_count,
                 'total_classes': class_count,
-                'total_lines': sum(len(n.get('code', '').split('\n')) for n in directory_data['nodes'] if n['type'] == 'file')
+                'total_lines': sum(len(n.get('code', '').split('\n')) for n in snapshot.get('nodes', []) if n['type'] == 'file')
             },
             'last_analysis': time.strftime("%Y-%m-%d %H:%M:%S"),
             'gemini_summary': analysis_text,
@@ -886,8 +971,10 @@ def save_gemini_overview(analysis_text):
         log_to_console(f"Error saving overview: {str(e)}", "ERROR")
 
 def select_directory_and_analyze():
-    global directory_data
     print("=== select_directory_and_analyze() called ===")
+    if tk is None or filedialog is None:
+        print("GUI not available in this environment.")
+        return False
     root = tk.Tk()
     root.withdraw()
     directory_path = filedialog.askdirectory(title="Select a folder with Python scripts")
@@ -896,17 +983,17 @@ def select_directory_and_analyze():
         print("No directory selected. Exiting.")
         return False
         
-    directory_data = analyze_directory(directory_path)
+    set_directory_data(analyze_directory(directory_path))
     print(f"Analyzed directory: {directory_path}")
     print(f"Found {len(directory_data['nodes'])} nodes and {len(directory_data['edges'])} edges.")
     
-    # Start Gemini analysis in a separate thread (only if enabled and auto-initialize is on)
-    if GEMINI_ENABLED and GEMINI_INITIALIZE_ON_STARTUP:
-        analysis_thread = threading.Thread(target=perform_gemini_analysis, daemon=True)
+    # Start AI analysis in a separate thread (only if enabled and auto-initialize is on)
+    if GEMINI_ENABLED and GEMINI_INITIALIZE_ON_STARTUP and AI_PROVIDER != 'none':
+        analysis_thread = threading.Thread(target=perform_ai_analysis, daemon=True)
         analysis_thread.start()
-        print("Gemini analysis started in background thread. Web server will start immediately.")
+        print("AI analysis started in background thread. Web server will start immediately.")
     else:
-        print("Gemini analysis disabled or not auto-initializing. Web server starting immediately.")
+        print("AI analysis disabled or not auto-initializing. Web server starting immediately.")
     
     return True
 
@@ -916,8 +1003,9 @@ def index():
         return render_template_string(open('first_run.html', 'r', encoding='utf-8').read())
     else:
         # Load current workspace data if not already loaded
-        global directory_data
-        if not directory_data:
+        with directory_data_lock:
+            is_loaded = bool(directory_data)
+        if not is_loaded:
             try:
                 current_workspace = get_current_workspace()
                 workspaces = get_workspaces()
@@ -930,19 +1018,20 @@ def index():
                     # Check if directory exists
                     if not os.path.exists(workspace_dir):
                         log_to_console(f"Workspace directory does not exist: {workspace_dir}", "ERROR")
-                        directory_data = {"nodes": [], "edges": []}
+                        set_directory_data({"nodes": [], "edges": []})
                     else:
-                        directory_data = analyze_directory(workspace_dir)
-                        log_to_console(f"Analysis complete. Found {len(directory_data['nodes'])} nodes and {len(directory_data['edges'])} edges.", "INFO")
+                        analyzed = analyze_directory(workspace_dir)
+                        set_directory_data(analyzed)
+                        log_to_console(f"Analysis complete. Found {len(analyzed['nodes'])} nodes and {len(analyzed['edges'])} edges.", "INFO")
                         
                         # Start file monitoring
                         start_file_monitoring(workspace_dir)
                 else:
                     log_to_console(f"No valid workspace found. Current: {current_workspace}, Available: {list(workspaces.keys())}", "WARNING")
-                    directory_data = {"nodes": [], "edges": []}
+                    set_directory_data({"nodes": [], "edges": []})
             except Exception as e:
                 log_to_console(f"Error loading workspace: {str(e)}", "ERROR")
-                directory_data = {"nodes": [], "edges": []}
+                set_directory_data({"nodes": [], "edges": []})
         
         return render_template_string(open('index.html', 'r', encoding='utf-8').read())
 
@@ -952,13 +1041,13 @@ def styles():
 
 @app.route('/data')
 def data():
-    return jsonify(directory_data)
+    return jsonify(get_directory_data_snapshot())
 
 @app.route('/initial-analysis')
 def get_initial_analysis():
-    if not GEMINI_ENABLED:
+    if not GEMINI_ENABLED or AI_PROVIDER == 'none':
         return jsonify({
-            'analysis': 'Gemini analysis is disabled.',
+            'analysis': 'AI analysis is disabled.',
             'complete': True
         })
     return jsonify({
@@ -987,25 +1076,51 @@ def get_settings():
                     'auto_save_gemini': global_prefs.get('auto_save_gemini', False)
                 }
                 # Also load gemini settings from global prefs
-                global GEMINI_ENABLED, GEMINI_INITIALIZE_ON_STARTUP
+                global GEMINI_ENABLED, GEMINI_INITIALIZE_ON_STARTUP, AI_PROVIDER, AI_MODEL, AI_BASE_URL, AI_TIMEOUT_SEC, GEMINI_CLI_PATH
                 GEMINI_ENABLED = global_prefs.get('gemini_enabled', False)
                 GEMINI_INITIALIZE_ON_STARTUP = global_prefs.get('gemini_initialize_on_startup', False)
+                AI_PROVIDER = global_prefs.get('ai_provider', AI_PROVIDER)
+                AI_MODEL = global_prefs.get('ai_model', AI_MODEL)
+                AI_BASE_URL = global_prefs.get('ai_base_url', AI_BASE_URL)
+                AI_TIMEOUT_SEC = global_prefs.get('ai_timeout_sec', AI_TIMEOUT_SEC)
+                GEMINI_CLI_PATH = global_prefs.get('gemini_cli_path', GEMINI_CLI_PATH)
+                global DEBUG_LOG_AI_RESPONSES
+                DEBUG_LOG_AI_RESPONSES = global_prefs.get('debug_log_ai', False)
     except Exception as e:
         print(f"Error loading global preferences: {e}")
     
+    # Try to enumerate local Ollama models if provider is ollama
+    ollama_models = []
+    try:
+        if AI_PROVIDER == 'ollama':
+            ollama_models = _list_ollama_models(AI_BASE_URL, AI_TIMEOUT_SEC)
+    except Exception as e:
+        print(f"Failed to list Ollama models: {e}")
+
     return jsonify({
         'gemini_enabled': GEMINI_ENABLED,
         'gemini_initialize_on_startup': GEMINI_INITIALIZE_ON_STARTUP,
         'gemini_initialized': GEMINI_INITIALIZED,
+        'ai_provider': AI_PROVIDER,
+        'ai_model': AI_MODEL,
+        'ollama_models': ollama_models,
+        'ai_base_url': AI_BASE_URL,
+        'ai_timeout_sec': AI_TIMEOUT_SEC,
+        'debug_log_ai': DEBUG_LOG_AI_RESPONSES,
         **theme_settings
     })
 
 @app.route('/settings', methods=['POST'])
 def update_settings():
-    global GEMINI_ENABLED, GEMINI_INITIALIZE_ON_STARTUP
+    global GEMINI_ENABLED, GEMINI_INITIALIZE_ON_STARTUP, AI_PROVIDER, AI_MODEL, AI_BASE_URL, AI_TIMEOUT_SEC, GEMINI_CLI_PATH
     data = request.json
     GEMINI_ENABLED = data.get('gemini_enabled', False)
     GEMINI_INITIALIZE_ON_STARTUP = data.get('gemini_initialize_on_startup', False)
+    AI_PROVIDER = data.get('ai_provider', AI_PROVIDER)
+    AI_MODEL = data.get('ai_model', AI_MODEL)
+    AI_BASE_URL = data.get('ai_base_url', AI_BASE_URL)
+    AI_TIMEOUT_SEC = data.get('ai_timeout_sec', AI_TIMEOUT_SEC)
+    GEMINI_CLI_PATH = data.get('gemini_cli_path', GEMINI_CLI_PATH)
     
     # Save all settings to global preferences
     try:
@@ -1025,10 +1140,16 @@ def update_settings():
         global_prefs.update({
             'gemini_enabled': GEMINI_ENABLED,
             'gemini_initialize_on_startup': GEMINI_INITIALIZE_ON_STARTUP,
+            'ai_provider': AI_PROVIDER,
+            'ai_model': AI_MODEL,
+            'ai_base_url': AI_BASE_URL,
+            'ai_timeout_sec': AI_TIMEOUT_SEC,
+            'gemini_cli_path': GEMINI_CLI_PATH,
             'theme': data.get('theme', 'default'),
             'custom_primary': data.get('custom_primary', '#00ff00'),
             'custom_secondary': data.get('custom_secondary', '#121212'),
             'auto_save_gemini': data.get('auto_save_gemini', False),
+            'debug_log_ai': data.get('debug_log_ai', False),
             'last_modified': time.strftime("%Y-%m-%d %H:%M:%S")
         })
         
@@ -1046,6 +1167,12 @@ def update_settings():
         
         config['gemini_enabled'] = GEMINI_ENABLED
         config['gemini_initialize_on_startup'] = GEMINI_INITIALIZE_ON_STARTUP
+        config['ai_provider'] = AI_PROVIDER
+        config['ai_model'] = AI_MODEL
+        config['ai_base_url'] = AI_BASE_URL
+        config['ai_timeout_sec'] = AI_TIMEOUT_SEC
+        if GEMINI_CLI_PATH:
+            config['gemini_cli_path'] = GEMINI_CLI_PATH
         
         with open(CONFIG_FILE, 'w') as f:
             json.dump(config, f, indent=2)
@@ -1054,21 +1181,89 @@ def update_settings():
         print(f"Error saving settings: {e}")
         return jsonify({'success': False, 'error': str(e)})
     
-    return jsonify({'success': True})
+    # Return updated settings including any discovered models
+    extra = {}
+    try:
+        if AI_PROVIDER == 'ollama':
+            extra['ollama_models'] = _list_ollama_models(AI_BASE_URL, AI_TIMEOUT_SEC)
+    except Exception as e:
+        print(f"Failed to list Ollama models: {e}")
+
+    return jsonify({'success': True, **extra})
+
+
+def _list_ollama_models(base_url: str, timeout_sec: int):
+    try:
+        import requests
+        resp = requests.get(f"{base_url}/api/tags", timeout=timeout_sec)
+        if resp.ok:
+            data = resp.json()
+            if isinstance(data, dict) and 'models' in data:
+                return [m.get('name') for m in data.get('models', []) if m.get('name')]
+    except Exception as e:
+        print(f"_list_ollama_models error: {e}")
+    return []
+
+
+@app.route('/ai/models')
+def list_ai_models():
+    """Provider-agnostic model listing endpoint used by the settings UI."""
+    provider = request.args.get('provider', AI_PROVIDER)
+    base_url = request.args.get('base_url', AI_BASE_URL)
+    models = []
+    try:
+        if provider == 'ollama':
+            models = _list_ollama_models(base_url, AI_TIMEOUT_SEC)
+        elif provider == 'gemini':
+            # Gemini CLI doesn't easily expose models without auth; defer to manual entry later
+            models = []
+    except Exception as e:
+        print(f"/ai/models error: {e}")
+    return jsonify({'provider': provider, 'models': models})
+
+@app.route('/save-layout', methods=['POST'])
+def save_layout():
+    """Persist front-end node positions per file id."""
+    try:
+        data = request.json or {}
+        file_id = data.get('file_id')  # e.g., relative file name id used in nodes
+        positions = data.get('positions')  # [{id, x, y}]
+        if not file_id or not isinstance(positions, list):
+            return jsonify({'success': False, 'error': 'Invalid payload'}), 400
+
+        layouts = _read_layouts()
+        layouts[file_id] = positions
+        if not _write_layouts(layouts):
+            return jsonify({'success': False, 'error': 'Failed to write layouts'}), 500
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/load-layout', methods=['GET'])
+def load_layout():
+    """Return saved positions for a given file id if any."""
+    try:
+        file_id = request.args.get('file_id')
+        if not file_id:
+            return jsonify({'success': False, 'error': 'file_id required'}), 400
+        layouts = _read_layouts()
+        return jsonify({'success': True, 'positions': layouts.get(file_id, [])})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/initialize-gemini', methods=['POST'])
 def initialize_gemini():
     global GEMINI_INITIALIZED
-    if not GEMINI_ENABLED:
-        return jsonify({'error': 'Gemini must be enabled first'}), 400
+    if not GEMINI_ENABLED or AI_PROVIDER == 'none':
+        return jsonify({'error': 'AI must be enabled first'}), 400
     
     if not GEMINI_INITIALIZED:
-        analysis_thread = threading.Thread(target=perform_gemini_analysis, daemon=True)
+        analysis_thread = threading.Thread(target=perform_ai_analysis, daemon=True)
         analysis_thread.start()
         GEMINI_INITIALIZED = True
-        return jsonify({'success': True, 'message': 'Gemini analysis started'})
+        return jsonify({'success': True, 'message': 'AI analysis started'})
     else:
-        return jsonify({'success': True, 'message': 'Gemini already initialized'})
+        return jsonify({'success': True, 'message': 'AI already initialized'})
 
 @app.route('/first-run')
 def first_run_page():
@@ -1114,11 +1309,14 @@ def switch_workspace():
                 json.dump(config, f, indent=2)
             
             # Analyze the new workspace directory
-            global directory_data
             workspace_dir = workspaces[workspace_id]['directory']
-            directory_data = analyze_directory(workspace_dir)
+            analyzed = analyze_directory(workspace_dir)
+            set_directory_data(analyzed)
+            # Reset AI state so UI can re-init analysis if needed
+            global GEMINI_INITIALIZED
+            GEMINI_INITIALIZED = False
             print(f"Switched to workspace: {workspace_id} -> {workspace_dir}")
-            print(f"Found {len(directory_data['nodes'])} nodes and {len(directory_data['edges'])} edges.")
+            print(f"Found {len(analyzed['nodes'])} nodes and {len(analyzed['edges'])} edges.")
             
             # Start file monitoring for the new workspace
             start_file_monitoring(workspace_dir)
@@ -1170,11 +1368,10 @@ def remove_workspace():
             config['current_workspace'] = 'workspace_1'
             
             # Reload data for workspace_1
-            global directory_data
             remaining_workspaces = get_workspaces()
             if 'workspace_1' in remaining_workspaces:
                 workspace_dir = remaining_workspaces['workspace_1']['directory']
-                directory_data = analyze_directory(workspace_dir)
+                set_directory_data(analyze_directory(workspace_dir))
                 print(f"Switched to default workspace: workspace_1 -> {workspace_dir}")
         
         # Save updated config
@@ -1259,6 +1456,43 @@ def validate_parent_directory():
         print(f"Error in validate_parent_directory: {e}")
         return jsonify({'success': False, 'error': str(e)})
 
+@app.route('/browse-directory', methods=['POST'])
+def browse_directory():
+    """Open a native folder picker and return the selected directory path."""
+    try:
+        # Prefer a Windows-native dialog via PowerShell to avoid Tk threading issues
+        if os.name == 'nt':
+            try:
+                ps_cmd = [
+                    'powershell', '-NoProfile', '-STA', '-Command',
+                    "[void][reflection.assembly]::LoadWithPartialName('System.Windows.Forms');"
+                    "$fbd = New-Object System.Windows.Forms.FolderBrowserDialog;"
+                    "$fbd.Description='Select a folder';"
+                    "if($fbd.ShowDialog() -eq 'OK'){ Write-Output $fbd.SelectedPath }"
+                ]
+                result = subprocess.run(ps_cmd, capture_output=True, text=True, timeout=120)
+                path = (result.stdout or '').strip()
+                if path:
+                    return jsonify({'success': True, 'directory_path': path})
+            except Exception as e:
+                print(f"PowerShell folder dialog failed: {e}")
+
+        # Fallback to Tkinter if available
+        if tk is None or filedialog is None:
+            return jsonify({'success': False, 'error': 'GUI not available in this environment'})
+        root = tk.Tk()
+        root.withdraw()
+        selected = filedialog.askdirectory(title="Select a folder")
+        try:
+            root.destroy()
+        except Exception:
+            pass
+        if not selected:
+            return jsonify({'success': False, 'error': 'No directory selected'})
+        return jsonify({'success': True, 'directory_path': selected})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
 @app.route('/save-workspace', methods=['POST'])
 def save_workspace():
     data = request.json
@@ -1270,19 +1504,19 @@ def save_workspace():
     
     if save_workspace_config(workspace_name, directory_path):
         # Analyze the directory and start the main app
-        global directory_data
-        directory_data = analyze_directory(directory_path)
+        analyzed = analyze_directory(directory_path)
+        set_directory_data(analyzed)
         print(f"Analyzed directory: {directory_path}")
-        print(f"Found {len(directory_data['nodes'])} nodes and {len(directory_data['edges'])} edges.")
+        print(f"Found {len(analyzed['nodes'])} nodes and {len(analyzed['edges'])} edges.")
         
         # Start file monitoring
         start_file_monitoring(directory_path)
         
-        # Start Gemini analysis if enabled and auto-initialize is on
-        if GEMINI_ENABLED and GEMINI_INITIALIZE_ON_STARTUP:
-            analysis_thread = threading.Thread(target=perform_gemini_analysis, daemon=True)
+        # Start AI analysis if enabled and auto-initialize is on
+        if GEMINI_ENABLED and GEMINI_INITIALIZE_ON_STARTUP and AI_PROVIDER != 'none':
+            analysis_thread = threading.Thread(target=perform_ai_analysis, daemon=True)
             analysis_thread.start()
-            print("Gemini analysis started in background thread.")
+            print("AI analysis started in background thread.")
         
         return jsonify({'success': True, 'message': 'Workspace saved and analysis started'})
     else:
@@ -1385,7 +1619,8 @@ def ask_gemini():
     if full_project_context:
         # Get all code from directory_data
         all_code = ""
-        for node in directory_data.get('nodes', []):
+        snapshot = get_directory_data_snapshot()
+        for node in snapshot.get('nodes', []):
             if node.get('type') == 'file':
                 all_code += f"\n\n--- {node.get('name', 'unknown')} ---\n{node.get('code', '')}"
         
@@ -1416,20 +1651,32 @@ Based on the entire project, please respond to the following request: {user_prom
         full_prompt += f"Now, please respond to the following request: {user_prompt}"
 
     try:
-        command = ["C:\\Users\\paytonmiller\\AppData\\Roaming\\npm\\gemini.cmd", "-p", "-"]
-        result = subprocess.run(
-            command,
-            input=full_prompt,
-            capture_output=True,
-            text=True,
-            check=True,
-            timeout=120 # Increased timeout for potentially larger context
-        )
-        gemini_response = result.stdout
-        log_to_console(f"Raw Gemini response: {gemini_response}", "DEBUG")
+        response_text = None
+        if AI_PROVIDER == 'ollama':
+            import requests
+            payload = {"model": AI_MODEL, "prompt": full_prompt, "stream": False}
+            r = requests.post(f"{AI_BASE_URL}/api/generate", json=payload, timeout=AI_TIMEOUT_SEC)
+            r.raise_for_status()
+            response_text = r.json().get('response', '')
+        elif AI_PROVIDER == 'gemini':
+            command = [GEMINI_CLI_PATH or "gemini", "-p", "-"]
+            result = subprocess.run(
+                command,
+                input=full_prompt,
+                capture_output=True,
+                text=True,
+                check=True,
+                timeout=AI_TIMEOUT_SEC
+            )
+            response_text = result.stdout
+        else:
+            return jsonify({'error': 'AI provider disabled'}), 400
+
+        if DEBUG_LOG_AI_RESPONSES:
+            log_to_console(f"Raw AI response: {response_text}", "DEBUG")
         
-        # Parse commands from Gemini's response
-        commands = parse_gemini_commands(gemini_response)
+        # Parse commands from AI response (if using the fenced format)
+        commands = parse_gemini_commands(response_text)
         
         action_results = []
         if commands:
@@ -1442,15 +1689,16 @@ Based on the entire project, please respond to the following request: {user_prom
                 action_results.append("Cannot execute commands: No active workspace directory found.")
         
         # Combine Gemini's original response with action results
-        final_response = gemini_response
+        final_response = response_text
         if action_results:
             final_response += "\n\n--- Actions Performed ---" + "\n".join(action_results)
             
-        log_to_console(f"Final response sent to frontend: {final_response}", "DEBUG")
+        if DEBUG_LOG_AI_RESPONSES:
+            log_to_console(f"Final response sent to frontend: {final_response}", "DEBUG")
         return jsonify({'response': final_response})
 
     except FileNotFoundError:
-        return jsonify({'error': 'The "gemini" command was not found.'}), 500
+        return jsonify({'error': 'AI CLI not found'}), 500
     except subprocess.CalledProcessError as e:
         error_message = f"Gemini CLI failed with exit code {e.returncode}:\n{e.stderr}"
         return jsonify({'error': error_message}), 500
@@ -1509,11 +1757,13 @@ def save_code():
         if not current_workspace:
             return jsonify({'success': False, 'error': 'No active workspace'})
         
-        # Normalize and validate the file path
-        abs_file_path = os.path.abspath(file_path)
-        abs_workspace_path = os.path.abspath(current_workspace)
-        
-        if not abs_file_path.startswith(abs_workspace_path):
+        # Normalize and validate the file path robustly (Windows-safe)
+        abs_file_path = os.path.realpath(file_path)
+        abs_workspace_path = os.path.realpath(current_workspace)
+        norm_file = os.path.normcase(abs_file_path)
+        norm_ws = os.path.normcase(abs_workspace_path)
+        common = os.path.commonpath([norm_file, norm_ws])
+        if common != norm_ws:
             return jsonify({'success': False, 'error': 'File path is outside the workspace directory'})
         
         # Check if file exists
@@ -1552,18 +1802,60 @@ def get_current_workspace_path():
     if current_monitoring_directory:
         return current_monitoring_directory
     
-    # Fallback: try to get from workspace config
+    # Fallback: read from our config and workspaces
     try:
-        workspace_config = load_workspace_config()
-        if workspace_config and workspace_config.get('current_workspace'):
-            workspace_name = workspace_config['current_workspace']
-            for workspace in workspace_config.get('workspaces', []):
-                if workspace['name'] == workspace_name:
-                    return workspace['directory_path']
+        current_ws = get_current_workspace()
+        workspaces = get_workspaces()
+        if current_ws in workspaces:
+            return workspaces[current_ws].get('directory')
     except Exception as e:
         print(f"Error getting current workspace path: {e}")
     
     return None
+
+def get_current_workspace_meta_folder():
+    """Return the workspace meta folder path (workspaces/workspace_X)."""
+    try:
+        current_ws = get_current_workspace()
+        # Open config to get the workspace folder
+        if os.path.exists(CONFIG_FILE):
+            with open(CONFIG_FILE, 'r') as f:
+                config = json.load(f)
+                ws = config.get(current_ws)
+                if isinstance(ws, dict):
+                    folder = ws.get('workspace_folder')
+                    if folder and os.path.isdir(folder):
+                        return folder
+        # Fallback: construct default path
+        default_folder = os.path.join(WORKSPACES_DIR, current_ws)
+        return default_folder
+    except Exception as e:
+        print(f"Error getting workspace meta folder: {e}")
+        return os.path.join(WORKSPACES_DIR, get_current_workspace())
+
+def _read_layouts():
+    try:
+        meta_folder = get_current_workspace_meta_folder()
+        os.makedirs(meta_folder, exist_ok=True)
+        layouts_path = os.path.join(meta_folder, LAYOUTS_FILENAME)
+        if os.path.exists(layouts_path):
+            with open(layouts_path, 'r', encoding='utf-8') as f:
+                return json.load(f)
+    except Exception as e:
+        print(f"Error reading layouts: {e}")
+    return {}
+
+def _write_layouts(layouts):
+    try:
+        meta_folder = get_current_workspace_meta_folder()
+        os.makedirs(meta_folder, exist_ok=True)
+        layouts_path = os.path.join(meta_folder, LAYOUTS_FILENAME)
+        with open(layouts_path, 'w', encoding='utf-8') as f:
+            json.dump(layouts, f, indent=2)
+        return True
+    except Exception as e:
+        print(f"Error writing layouts: {e}")
+        return False
 
 def load_global_preferences():
     """Load global preferences from file"""
