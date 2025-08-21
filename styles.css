@@ -1099,7 +1099,7 @@ svg {
     background-color: var(--medium-gray);
     color: var(--light-gray);
     font-family: inherit;
-    font-size: clamp(22px, 2.8vh + 10px, 28px);
+    font-size: clamp(27px, 3.2vh + 12px, 34px);
     transition: all 0.2s ease;
 }
 
@@ -1121,7 +1121,7 @@ svg {
     color: var(--dark-gray);
     cursor: pointer;
     font-weight: bold;
-    font-size: clamp(22px, 2.8vh + 10px, 28px);
+    font-size: clamp(27px, 3.2vh + 12px, 34px);
     transition: all 0.2s ease;
 }
 
@@ -1331,7 +1331,7 @@ svg {
     color: var(--primary-green);
     font-weight: bold;
     margin-bottom: 10px;
-    font-size: 20px;
+    font-size: 25px;
 }
 
 .return-item {
@@ -1341,7 +1341,7 @@ svg {
     border-radius: 3px;
     border-left: 3px solid var(--primary-green);
     font-family: 'Courier New', monospace;
-    font-size: 20px;
+    font-size: 25px;
 }
 
 /* Welcome Modal Styles */
