@@ -100,7 +100,7 @@ body {
 
 .navbar h1 {
     margin: 0;
-    font-size: clamp(18px, 2.2vh + 6px, 26px); /* scale with bar height */
+    font-size: clamp(24px, 2.8vh + 10px, 36px); /* larger, still fits 5vh bar */
     font-weight: bold;
 }
 
@@ -114,8 +114,8 @@ body {
     color: var(--light-gray);
     border: 1px solid var(--border-color);
     border-radius: 4px;
-    padding: 6px 10px;
-    font-size: 14px; /* readable */
+    padding: 6px 12px;
+    font-size: 18px; /* doubled for legibility */
     font-family: inherit;
     cursor: pointer;
     min-width: 150px;
@@ -136,8 +136,8 @@ body {
     background-color: var(--dark-gray);
     color: var(--primary-green);
     border: 1px solid var(--primary-green);
-    padding: 6px 10px;
-    font-size: 14px;
+    padding: 8px 12px;
+    font-size: 18px;
     margin-left: 10px;
     transition: all 0.2s ease;
 }
@@ -161,11 +161,11 @@ body {
     background-color: var(--dark-gray);
     color: var(--primary-green);
     border: none;
-    padding: 6px 12px;
+    padding: 8px 14px;
     border-radius: 5px;
     cursor: pointer;
     font-weight: bold;
-    font-size: 14px;
+    font-size: 20px; /* larger for readability */
     transition: all 0.2s ease;
 }
 
@@ -185,7 +185,7 @@ body {
 }
 
 .gear-icon {
-    font-size: 20px;
+    font-size: 24px;
     cursor: pointer;
     color: var(--primary-green);
     transition: all 0.2s ease;
