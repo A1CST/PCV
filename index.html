@@ -535,6 +535,7 @@
                 .attr("width", width)
                 .attr("height", height)
                 .attr("viewBox", `0 0 ${width} ${height}`)
+                .attr("preserveAspectRatio", "xMidYMid meet")
                 .call(zoomBehavior);
 
             const g = svg.append("g");
@@ -879,8 +880,10 @@
                 }
             });
 
-            // Fallback: ensure a fit on next frame in case 'end' fires before layout settles
+            // Fallbacks: ensure a fit shortly after render (some layouts finalize post paint)
             requestAnimationFrame(() => zoomToFit(24, true));
+            setTimeout(() => zoomToFit(24, true), 150);
+            setTimeout(() => zoomToFit(24, true), 600);
 
             // Refit on container resize
             const ro = new ResizeObserver(() => {
