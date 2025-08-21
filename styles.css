@@ -42,8 +42,6 @@
 [data-theme="custom"] {
     --primary-color: var(--custom-primary, #00ff00);
     --secondary-color: var(--custom-secondary, #121212);
-    --text-color: var(--custom-text, #e5e7eb);
-    --light-gray: var(--custom-text, #e5e7eb);
 }
 
 /* Apply theme colors to all themes */

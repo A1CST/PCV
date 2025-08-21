@@ -1061,8 +1061,7 @@ def get_settings():
     theme_settings = {
         'theme': 'default',
         'custom_primary': '#00ff00',
-        'custom_secondary': '#121212',
-        'custom_text': '#e5e7eb'
+        'custom_secondary': '#121212'
     }
     
     try:
@@ -1074,7 +1073,6 @@ def get_settings():
                     'theme': global_prefs.get('theme', 'default'),
                     'custom_primary': global_prefs.get('custom_primary', '#00ff00'),
                     'custom_secondary': global_prefs.get('custom_secondary', '#121212'),
-                    'custom_text': global_prefs.get('custom_text', '#e5e7eb'),
                     'auto_save_gemini': global_prefs.get('auto_save_gemini', False)
                 }
                 # Also load gemini settings from global prefs
@@ -1109,8 +1107,7 @@ def get_settings():
         'ai_base_url': AI_BASE_URL,
         'ai_timeout_sec': AI_TIMEOUT_SEC,
         'debug_log_ai': DEBUG_LOG_AI_RESPONSES,
-        **theme_settings,
-        'custom_text': theme_settings.get('custom_text', '#e5e7eb') if isinstance(theme_settings, dict) else '#e5e7eb'
+        **theme_settings
     })
 
 @app.route('/settings', methods=['POST'])
@@ -1151,7 +1148,6 @@ def update_settings():
             'theme': data.get('theme', 'default'),
             'custom_primary': data.get('custom_primary', '#00ff00'),
             'custom_secondary': data.get('custom_secondary', '#121212'),
-            'custom_text': data.get('custom_text', '#e5e7eb'),
             'auto_save_gemini': data.get('auto_save_gemini', False),
             'debug_log_ai': data.get('debug_log_ai', False),
             'last_modified': time.strftime("%Y-%m-%d %H:%M:%S")
@@ -1724,7 +1720,6 @@ def get_global_preferences():
                     'theme': global_prefs.get('theme', 'default'),
                     'custom_primary': global_prefs.get('custom_primary', '#00ff00'),
                     'custom_secondary': global_prefs.get('custom_secondary', '#121212'),
-                    'custom_text': global_prefs.get('custom_text', '#e5e7eb'),
                     'auto_save_gemini': global_prefs.get('auto_save_gemini', False)
                 })
     except Exception as e:
@@ -1735,7 +1730,6 @@ def get_global_preferences():
         'theme': 'default',
         'custom_primary': '#00ff00',
         'custom_secondary': '#121212',
-        'custom_text': '#e5e7eb',
         'auto_save_gemini': False
     })
 

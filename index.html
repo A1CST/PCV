@@ -250,10 +250,6 @@
                         <label class="color-label">Secondary Color:</label>
                         <input type="color" id="secondary-color-picker" value="#121212">
                     </div>
-                    <div class="color-picker-item">
-                        <label class="color-label">Text Color:</label>
-                        <input type="color" id="text-color-picker" value="#e5e7eb">
-                    </div>
                 </div>
                 <div class="setting-description">Choose your own primary and secondary colors</div>
             </div>
@@ -396,7 +392,6 @@
             theme: 'default',
             custom_primary: '#00ff00',
             custom_secondary: '#121212',
-            custom_text: '#e5e7eb',
             auto_save_gemini: false
         };
 
@@ -1223,15 +1218,7 @@
                 applyCustomColors();
             }
         });
-        const textPickerEl = document.getElementById('text-color-picker');
-        if (textPickerEl) {
-            textPickerEl.addEventListener('change', function() {
-                settingsData.custom_text = this.value;
-                if (settingsData.theme === 'custom') {
-                    applyCustomColors();
-                }
-            });
-        }
+        
         
         // Auto-save toggle event listener
         document.getElementById('auto-save-toggle').addEventListener('change', function() {
@@ -1319,7 +1306,6 @@
                     settingsData.theme = theme;
                     settingsData.custom_primary = data.custom_primary || '#00ff00';
                     settingsData.custom_secondary = data.custom_secondary || '#121212';
-                    settingsData.custom_text = data.custom_text || '#e5e7eb';
                     applyTheme(theme);
                     console.log('Global theme loaded:', theme);
                 })
@@ -1351,10 +1337,7 @@
                         const s = document.getElementById('secondary-color-picker'); if (s) s.value = data.custom_secondary;
                         settingsData.custom_secondary = data.custom_secondary;
                     }
-                    if (data.custom_text) {
-                        const t = document.getElementById('text-color-picker'); if (t) t.value = data.custom_text;
-                        settingsData.custom_text = data.custom_text;
-                    }
+                    
                     
                     // Load auto-save setting
                     document.getElementById('auto-save-toggle').checked = data.auto_save_gemini || false;
@@ -1565,12 +1548,13 @@
         function applyCustomColors() {
             const primary = settingsData.custom_primary;
             const secondary = settingsData.custom_secondary;
-            const textColor = settingsData.custom_text || '#e5e7eb';
+            const textColor = pickContrastingColor(secondary);
             
-            // Apply only primary and secondary colors
+            // Apply colors and auto-contrast text
             document.documentElement.style.setProperty('--custom-primary', primary);
             document.documentElement.style.setProperty('--custom-secondary', secondary);
-            document.documentElement.style.setProperty('--custom-text', textColor);
+            document.documentElement.style.setProperty('--text-color', textColor);
+            document.documentElement.style.setProperty('--light-gray', textColor);
         }
 
         // Utility: compute high-contrast text color (black/white) from background
