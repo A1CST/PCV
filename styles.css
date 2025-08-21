@@ -678,7 +678,7 @@ input[type="color"]::-webkit-color-swatch {
     margin-bottom: 8px;
     border-radius: 4px;
     border-left: 3px solid var(--primary-green);
-    font-size: 14px;
+    font-size: 18px;
 }
 
 .todo-item.completed {
@@ -693,7 +693,7 @@ input[type="color"]::-webkit-color-swatch {
     margin-bottom: 8px;
     border-radius: 4px;
     border-left: 3px solid var(--primary-color);
-    font-size: 14px;
+    font-size: 18px;
 }
 
 .issue-severity {
@@ -731,7 +731,7 @@ input[type="color"]::-webkit-color-swatch {
 .console-output {
     background-color: var(--dark-gray);
     font-family: 'Courier New', monospace;
-    font-size: 14px;
+    font-size: 18px;
     line-height: 1.4;
     white-space: pre-wrap;
     color: var(--light-gray);
