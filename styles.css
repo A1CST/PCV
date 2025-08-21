@@ -797,8 +797,9 @@ input[type="color"]::-webkit-color-swatch {
 .swiper-slide {
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    justify-content: flex-start; /* prevent title cutoff in fullscreen */
     align-items: center;
+    padding-top: 12px; /* space for filename/title */
     background: var(--medium-gray);
     border-radius: 10px;
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
@@ -808,7 +809,7 @@ input[type="color"]::-webkit-color-swatch {
 
 .swiper-slide h3 {
     color: var(--primary-green);
-    margin-top: 20px;
+    margin: 0 0 10px 0; /* keep within padding area */
     transition: color 0.3s ease;
 }
 
