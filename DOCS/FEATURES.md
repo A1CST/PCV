@@ -28,4 +28,10 @@
 - Larger Settings / Add Project / New Project modals.
 - Browse buttons with Windows-native folder picker.
 
+### Manual Layout Editing
+- Per-file node positions can be manually arranged.
+- Click "Edit Layout" on a slide to enable dragging function/class nodes; the central file node remains pinned.
+- Click "Save Layout" to persist. Layouts are saved per file under the active workspace at `workspaces/<workspace_X>/layouts.json`.
+- Exiting edit mode restores swiper gestures and panning/zooming.
+
 

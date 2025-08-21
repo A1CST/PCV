@@ -26,3 +26,9 @@
 - POST `/browse-directory`: returns `{ success, directory_path }` using PowerShell folder dialog on Windows; Tk fallback else.
 
 Note: In CI/headless environments, Tk is disabled; fallback returns an error JSON.
+
+## Layout Persistence
+- GET `/load-layout?file_id=<relative_file_id>`: returns saved node positions for the given file.
+- POST `/save-layout` body:
+  - `file_id` (string; relative file id used in graph)
+  - `positions` (array of `{ id, x, y }` for file, class, and function nodes)
