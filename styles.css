@@ -189,7 +189,7 @@ body {
     cursor: pointer;
     color: var(--primary-green);
     transition: all 0.2s ease;
-    margin-left: -9px; /* shift ~25px left relative to prior */
+    margin-left: -4px; /* adjusted 5px to the right */
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -197,7 +197,7 @@ body {
     height: 40px;
     line-height: 40px; /* ensure glyph is vertically centered */
     position: relative;
-    top: 5px; /* move down ~5px */
+    top: 2.5px; /* move up by 2.5px from previous */
 }
 
 .gear-icon:hover {
